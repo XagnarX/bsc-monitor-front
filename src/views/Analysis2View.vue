@@ -2,56 +2,35 @@
   div#targetMonitor
     .top
       span
+      a-space
+        a-button(shape="round" @click="fetchData") 刷新
+          template(#icon)
+            icon-refresh
     .mb-16
     a-form(layout="inline" :model="searchParams" @submit="startPolling")
-      a-row(:gutter="16")
-        a-col(:span="6")
-          a-form-item(label="来源地址")
-            a-input(v-model="searchParams.from_address" placeholder="请输入来源地址" @blur="queryTagList" allow-clear)
-        a-col(:span="6")
-          a-form-item(label="标签")
-            a-select(v-model="searchParams.tag" :options="tagOptions" placeholder="请选择标签" allow-clear allow-search style="width:220px")
-        a-col(:span="6")
-          a-form-item(label="是否新地址" )
-            a-select(v-model="searchParams.is_new_address" placeholder="请选择" :options="[{label:'是',value:true},{label: '否',value:false}]" allow-clear style="width:120px")
-      a-row(:gutter="16")
-        a-col(:span="6")
-          a-form-item(label="转账金额最小值" )
-            a-input-number(v-model="searchParams.min_value" placeholder="请输入最小值" allow-clear style="width:400px")
-        a-col(:span="6")
-          a-form-item(label="转账金额最大值" )
-            a-input-number(v-model="searchParams.max_value" placeholder="请输入最大值" allow-clear style="width:400px")
-      a-row(:gutter="16")
-        a-col(:span="6")
-          a-form-item(label="最小block_num" )
-            a-input-number(v-model="searchParams.min_block_num" placeholder="请输入最小BlockNum" allow-clear style="width:500px")
-        a-col(:span="6")
-          a-form-item(label="最大block_num" )
-            a-input-number(v-model="searchParams.max_block_num" placeholder="请输入最大BlockNum" allow-clear style="width:500px")
-        a-col(:span="6")
-          a-form-item(label="开始时间")
-            a-date-picker(v-model="searchParams.start_time" show-time format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择开始时间" style="width:180px")
-        a-col(:span="6")
-          a-form-item(label="结束时间")
-            a-date-picker(v-model="searchParams.end_time" show-time format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择结束时间" style="width:180px")
-      a-row(:gutter="16")
-        a-col(:span="12")
-          a-form-item(label="来源地址(批量)")
-            a-textarea(v-model="searchParams.from_addresses" placeholder="多个地址用英文逗号分隔" auto-size style="width:600px; min-height: 60px;")
-        a-col(:span="12")
-          a-form-item(label="操作")
-            a-button(type="primary" html-type="submit" v-if="!isVisible" ) 开始监控
-            a-button(type="primary" status="danger" @click="stopPolling" v-else) 停止监控
-            a-button(shape="round" @click="fetchData" style="margin-left: 8px;") 刷新
-              template(#icon)
-                icon-refresh
+      a-form-item(label="地址")
+        a-input(v-model="searchParams.address" placeholder="请输入地址" @blur="queryTagList" allow-clear)
+      a-form-item(label="标签")
+        a-select(v-model="searchParams.tag" :options="tagOptions" placeholder="请选择标签" allow-clear allow-search)
+      a-form-item(label="最小block_num" )
+        a-input-number(v-model="searchParams.min_block_num" placeholder="请输入最小BlockNum" allow-clear)
+      a-form-item(label="最大block_num" )
+        a-input-number(v-model="searchParams.max_block_num" placeholder="请输入最大BlockNum" allow-clear)
+      a-form-item(label="最小值" )
+        a-input-number(v-model="searchParams.min_value" placeholder="请输入最小值" allow-clear)
+      a-form-item(label="最大值" )
+        a-input-number(v-model="searchParams.max_value" placeholder="请输入最大值" allow-clear)
+      a-form-item(label="是否新地址" )
+        a-select(v-model="searchParams.is_new_address" placeholder="请选择" :options="[{label:'是',value:true},{label: '否',value:false}]" allow-clear)
+      a-form-item
+        a-button(type="primary" html-type="submit" v-if="!isVisible" ) 开始监控
+        a-button(type="primary" status="danger" @click="stopPolling" v-else) 停止监控
     .mb-16
     .table-scroll
       a-table(
         :columns="columns"
         :data="dataList"
-        :pagination="false"
-        size="mini"
+        :pagination="pagination"
         @change="doTableChange"
         stripe
         style="min-width: 1400px;"
@@ -59,39 +38,29 @@
         template(#address="{ record }")
           a-space
             a-link(:href="`https://bscscan.com/address/${record.Address}`" target="_blank") {{ formatAddress(record.Address) }}
-            a-button(type="text" size="mini" @click="copyToClipboard(record.Address)")
+            a-button(
+              type="text"
+              size="mini"
+              @click="copyToClipboard(record.Address)"
+            )
               template(#icon)
                 icon-copy
         template(#TxHash="{ record }")
           a-link(:href="`https://bscscan.com/tx/${record.TxHash}`" target="_blank") {{ formatHash(record.TxHash) }}
         template(#FromAddress="{ record }")
-          a-space
-            a-link(:href="`https://bscscan.com/address/${record.FromAddress}`" target="_blank") {{ formatAddress(record.FromAddress) }}
-            a-button(type="text" size="mini" @click="copyToClipboard(record.FromAddress)")
-              template(#icon)
-                icon-copy
-        //- template(#BlockNumber="{ record }")
-        //-   a-space
-        //-   a-link(:href="`https://bscscan.com/block/${record.BlockNumber}`" target="_blank") {{ record.BlockNumber }}
+          a-link(:href="`https://bscscan.com/address/${record.FromAddress}`" target="_blank") {{ formatAddress(record.FromAddress) }}
         template(#BlockNumber="{ record }")
-          a-space
-            a-link(:href="`https://bscscan.com/block/${record.BlockNumber}`" target="_blank") {{ record.BlockNumber }}
-            a-button(type="text" size="mini" @click.stop="copyToClipboard(record.BlockNumber)")
-              template(#icon)
-                icon-copy
+          a-link(:href="`https://bscscan.com/block/${record.BlockNumber}`" target="_blank") {{ record.BlockNumber }}
         template(#Value="{ record }")
           span {{ formatValue(record.Value) }}
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { analysis, getAllTags, queryTagByFromAddress } from '@/api/monitor.ts'
+import { analysis2, getAllTags, queryTagByFromAddress } from '@/api/monitor.ts'
 import { IconCopy, IconRefresh } from '@arco-design/web-vue/es/icon'
 import { Message } from '@arco-design/web-vue'
 import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
 import type { TableColumnData } from '@arco-design/web-vue'
-
-dayjs.extend(utc)
 
 interface TableRecord {
   ID?: number
@@ -126,7 +95,7 @@ const columns = ref<TableColumnData[]>([
     dataIndex: 'ID',
   },
   {
-    title: '目标地址',
+    title: '地址',
     dataIndex: 'Address',
     slotName: 'address',
   },
@@ -209,9 +178,6 @@ const searchParams = reactive<API.AnalysisQuery>({
   is_new_address: true,
   order_by: 'block_number',
   order: 'desc',
-  start_time: '',
-  end_time: '',
-  from_addresses: '',
 })
 const pagination = computed(() => {
   return {
@@ -229,18 +195,7 @@ const doTableChange = ({ current, pageSize }: TableChangeParams) => {
 
 // 获取数据
 const fetchData = async () => {
-  // 复制一份参数，避免直接改动响应式对象
-  const params = { ...searchParams }
-  if (params.from_addresses) {
-    params.from_addresses = params.from_addresses.replace(/\s+/g, '')
-  }
-  if (params.start_time) {
-    params.start_time = dayjs(params.start_time).utc().format('YYYY-MM-DDTHH:mm:ss[Z]')
-  }
-  if (params.end_time) {
-    params.end_time = dayjs(params.end_time).utc().format('YYYY-MM-DDTHH:mm:ss[Z]')
-  }
-  const res = await analysis(params)
+  const res = await analysis2(searchParams)
   if (res.data) {
     dataList.value = res.data.results ?? []
     total.value = res.data.total ?? 0
@@ -317,8 +272,8 @@ const getAllTagList = async () => {
 }
 
 const queryTagList = async () => {
-  if (!searchParams.from_address) return
-  const res = await queryTagByFromAddress({ monitor_address: searchParams.from_address })
+  if (!searchParams.address) return
+  const res = await queryTagByFromAddress({ monitor_address: searchParams.address })
   if (res.data?.tags) {
     tagOptions.value = res.data.tags.map((tag: Tag) => ({
       label: tag.tag || '',

@@ -15,6 +15,7 @@
     "@prettier/plugin-pug": "^3.4.0",
     "axios": "^1.9.0",
     "dayjs": "^1.11.13",
+    "express": "^5.1.0",
     "lodash": "^4.17.21",
     "pinia": "^3.0.1",
     "vue": "^3.5.13",

@@ -15,9 +15,17 @@
         a-menu-item(v-for="child in item.children" :key="child.key") {{child.title}}
 </template>
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { IconComputer, IconDashboard } from '@arco-design/web-vue/es/icon'
+
+interface MenuItem {
+  key: string
+  title: string
+  icon: any
+  path: string
+  children?: MenuItem[]
+}
 
 const props = defineProps({
   collapsed: Boolean,
@@ -25,7 +33,7 @@ const props = defineProps({
 
 const router = useRouter()
 
-const menuData = ref([
+const menuData = ref<MenuItem[]>([
   // {
   //   key: 'dashboard',
   //   title: '仪表盘',
@@ -35,25 +43,31 @@ const menuData = ref([
   {
     key: 'targetMonitor',
     title: '目标监控管理',
-    icon: IconComputer,
+    icon: markRaw(IconComputer),
     path: '/',
   },
   {
     key: 'analysis',
     title: '监控分析',
-    icon: IconComputer,
+    icon: markRaw(IconComputer),
     path: '/analysis',
+  },
+  {
+    key: 'activity',
+    title: '活跃度统计',
+    icon: markRaw(IconComputer),
+    path: '/activity',
   },
 ])
 
-const selectedKeys = ref([])
-const openKeys = ref([])
+const selectedKeys = ref<string[]>([])
+const openKeys = ref<string[]>([])
 
 // 根据当前路由自动选中菜单项
 watch(
   () => router.currentRoute.value.path,
   (path) => {
-    const findSelectedKey = (items) => {
+    const findSelectedKey = (items: MenuItem[]): string | null => {
       for (const item of items) {
         if (item.path === path) {
           return item.key
@@ -75,13 +89,13 @@ watch(
 )
 
 const handleMenuClick = (key: string) => {
-  const findPathByKey = (items, targetKey) => {
+  const findPathByKey = (items: MenuItem[], targetKey: string): string | null => {
     for (const item of items) {
       if (item.key === targetKey) {
         return item.path
       }
       if (item.children) {
-        const childPath: string = findPathByKey(item.children, targetKey)
+        const childPath = findPathByKey(item.children, targetKey)
         if (childPath) {
           return childPath
         }
@@ -96,4 +110,13 @@ const handleMenuClick = (key: string) => {
   }
 }
 </script>
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+:deep(.arco-menu-collapsed .arco-menu-item-content) {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+:deep(.arco-menu-collapsed .arco-menu-item-content span) {
+  display: none;
+}
+</style>
