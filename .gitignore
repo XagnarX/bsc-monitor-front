@@ -37,5 +37,6 @@ local.env
 
 /cypress/videos/
 /cypress/screenshots/
+/dist/
 
 *.tsbuildinfo

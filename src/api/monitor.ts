@@ -102,3 +102,35 @@ export const deleteActivityAddress = async (body: { address: string, tag?: strin
     ...(options || {}),
   })
 }
+
+export const getPinnedAddresses = async (options?: { [key: string]: any }) => {
+  return request<API.PinnedAddressesResponse>('/api/monitor2/activity/pinned', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    ...(options || {}),
+  })
+}
+
+export const addPinnedAddress = async (body: { address: string, tag: string }, options?: { [key: string]: any }) => {
+  return request('/api/monitor2/activity/pinned', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
+export const removePinnedAddress = async (body: { address: string, tag: string }, options?: { [key: string]: any }) => {
+  return request('/api/monitor2/activity/pinned', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}

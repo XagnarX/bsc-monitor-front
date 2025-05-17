@@ -35,10 +35,21 @@
       template(#period="{ record }")
         span {{ formatPeriod(record.period) }}
       template(#action="{ record }")
-        a-popconfirm(content="确认删除？" @ok="doDelete(record)")
-          a-button(type="outline" status="danger" size="mini") 删除
-            template(#icon)
-              icon-delete
+        a-space
+          a-tooltip(:content="record.is_pinned ? '取消置顶' : '置顶'")
+            a-button(
+              type="text"
+              size="mini"
+              @click="togglePin(record)"
+              :loading="pinLoading"
+              :style="{ color: record.is_pinned ? '#165DFF' : '#C0C4CC' }"
+            )
+              template(#icon)
+                icon-pushpin
+          a-popconfirm(content="确认删除？" @ok="doDelete(record)")
+            a-button(type="outline" status="danger" size="mini") 删除
+              template(#icon)
+                icon-delete
     a-drawer(
       v-model:visible="drawerVisible"
       title="交易明细"
@@ -85,13 +96,13 @@
 </template>
 <script setup lang="ts">
 import { ref, onUnmounted, onMounted, watch } from 'vue'
-import { getActivityStats, deleteActivityAddress, getAddressTransactions } from '@/api/monitor.ts'
+import { getActivityStats, deleteActivityAddress, getAddressTransactions, getPinnedAddresses, addPinnedAddress, removePinnedAddress } from '@/api/monitor.ts'
 import { Message } from '@arco-design/web-vue'
 import dayjs from 'dayjs'
 import { useRouter } from 'vue-router'
 import utc from 'dayjs/plugin/utc'
 import type { AxiosResponse } from 'axios'
-import { IconDelete, IconRefresh, IconCopy } from '@arco-design/web-vue/es/icon'
+import { IconDelete, IconRefresh, IconCopy, IconPushpin } from '@arco-design/web-vue/es/icon'
 
 interface ApiResponse {
   stats: ActivityRecord[]
@@ -111,6 +122,7 @@ interface ActivityRecord {
   total_out: string
   last_active: string
   period: Period
+  is_pinned?: boolean
 }
 
 type FilterType = 'all' | 'active' | 'inactive'
@@ -133,13 +145,19 @@ const columns = [
     slotName: 'address',
     width: 280
   },
+  { 
+    title: '操作', 
+    dataIndex: 'action', 
+    slotName: 'action',
+    width: 160,
+    fixed: 'right'
+  },
   { title: '标签', dataIndex: 'tag' },
   { title: '交易次数', dataIndex: 'tx_count', slotName: 'tx_count' },
   { title: '总流入', dataIndex: 'total_in' },
   { title: '总流出', dataIndex: 'total_out' },
   { title: '最后活跃时间', dataIndex: 'last_active', slotName: 'last_active' },
   { title: '统计周期', dataIndex: 'period', slotName: 'period' },
-  { title: '操作', dataIndex: 'action', slotName: 'action' },
 ]
 
 const filterOptions = [
@@ -169,11 +187,13 @@ const dataList = ref<ActivityRecord[]>([])
 const isVisible = ref(false)
 const timer = ref<number | null>(null)
 const loading = ref(false)
+const pinLoading = ref(false)
 const drawerVisible = ref(false)
 const drawerLoading = ref(false)
 const drawerTransactions = ref<any[]>([])
 const drawerAddress = ref('')
 const drawerWidth = ref(800)
+const pinnedAddresses = ref<Set<string>>(new Set())
 
 dayjs.extend(utc)
 
@@ -190,13 +210,17 @@ const fetchData = async () => {
     const res = await getActivityStats(params) as AxiosResponse<ApiResponse>
     setTimeout(() => {      
       if (res.data?.stats && Array.isArray(res.data.stats)) {
-        dataList.value = res.data.stats
+        dataList.value = res.data.stats.sort((a, b) => {
+          if (a.is_pinned && !b.is_pinned) return -1
+          if (!a.is_pinned && b.is_pinned) return 1
+          return 0
+        })
       } else {
         dataList.value = []
         Message.error(res.data?.message || '未获取到数据')
       }
       loading.value = false
-    }, 300)
+    }, 3000)
   } catch (e) {
     Message.error('请求失败')
     loading.value = false
@@ -320,6 +344,25 @@ const doDelete = async (record: ActivityRecord) => {
     fetchData()
   } catch (e) {
     Message.error('删除失败')
+  }
+}
+
+const togglePin = async (record: ActivityRecord) => {
+  if (pinLoading.value) return
+  pinLoading.value = true
+  try {
+    if (record.is_pinned) {
+      await removePinnedAddress({ address: record.address, tag: record.tag })
+      Message.success('已取消置顶')
+    } else {
+      await addPinnedAddress({ address: record.address, tag: record.tag })
+      Message.success('已置顶')
+    }
+    await fetchData()
+  } catch (e) {
+    Message.error('操作失败')
+  } finally {
+    pinLoading.value = false
   }
 }
 

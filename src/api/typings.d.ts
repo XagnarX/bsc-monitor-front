@@ -59,4 +59,27 @@ declare namespace API {
   type QueryTag = {
     monitor_address:string
   }
+
+  type PinnedAddress = {
+    address: string
+    tag: string
+    created_at: string
+    updated_at: string
+  }
+
+  type PinnedAddressesResponse = {
+    addresses: PinnedAddress[] | null
+    total: number
+  }
+
+  interface ActivityRecord {
+    address: string
+    tag: string
+    tx_count: number
+    total_in: string
+    total_out: string
+    last_active: string
+    period: Period
+    is_pinned: boolean
+  }
 }
