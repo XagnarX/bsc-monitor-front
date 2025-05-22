@@ -156,7 +156,11 @@ const columns = [
   { title: '交易次数', dataIndex: 'tx_count', slotName: 'tx_count' },
   { title: '总流入', dataIndex: 'total_in' },
   { title: '总流出', dataIndex: 'total_out' },
-  { title: '最后活跃时间', dataIndex: 'last_active', slotName: 'last_active' },
+  { 
+    title: '最后活跃时间', 
+    dataIndex: 'last_active', 
+    render: ({ record }: { record: ActivityRecord }) => record.last_active ? record.last_active.replace('T', ' ').slice(0, 19) : '',
+  },
   { title: '统计周期', dataIndex: 'period', slotName: 'period' },
 ]
 

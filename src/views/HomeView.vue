@@ -96,7 +96,7 @@ const doDelete = (record: API.Target) => {
     return
   }
   delTarget({ address: record.address, tag: record.tag }).then((res) => {
-    if (res.data) {
+    if (res.code == 200) {
       Message.success('删除成功')
       fetchData()
     } else {

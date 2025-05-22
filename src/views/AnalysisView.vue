@@ -164,16 +164,7 @@ const columns = ref<TableColumnData[]>([
   {
     title: '创建时间',
     dataIndex: 'CreatedAt',
-    render: ({ record }: { record: TableRecord }) => {
-      return dayjs(record.CreatedAt).format('YYYY-MM-DD HH:mm:ss')
-    },
-  },
-  {
-    title: '更新时间',
-    dataIndex: 'UpdatedAt',
-    render: ({ record }: { record: TableRecord }) => {
-      return dayjs(record.UpdatedAt).format('YYYY-MM-DD HH:mm:ss')
-    },
+    render: ({ record }: { record: TableRecord }) => record.CreatedAt ? record.CreatedAt.replace('T', ' ').slice(0, 19) : '',
   },
 ])
 
