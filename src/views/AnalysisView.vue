@@ -62,6 +62,11 @@
             a-button(type="text" size="mini" @click="copyToClipboard(record.Address)")
               template(#icon)
                 icon-copy
+        template(#action="{ record }")
+          a-popconfirm(content="确认删除？" @ok="doDelete(record)")
+            a-button(type="outline" status="danger" size="mini") 删除
+              template(#icon)
+                icon-delete
         template(#TxHash="{ record }")
           a-link(:href="`https://bscscan.com/tx/${record.TxHash}`" target="_blank") {{ formatHash(record.TxHash) }}
         template(#FromAddress="{ record }")
@@ -84,8 +89,8 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { analysis, getAllTags, queryTagByFromAddress } from '@/api/monitor.ts'
-import { IconCopy, IconRefresh } from '@arco-design/web-vue/es/icon'
+import { analysis, getAllTags, queryTagByFromAddress, deleteActivityAddress } from '@/api/monitor.ts'
+import { IconCopy, IconRefresh, IconDelete } from '@arco-design/web-vue/es/icon'
 import { Message } from '@arco-design/web-vue'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -122,32 +127,23 @@ interface Tag {
 
 const columns = ref<TableColumnData[]>([
   {
-    title: 'ID',
-    dataIndex: 'ID',
-  },
-  {
     title: '目标地址',
     dataIndex: 'Address',
     slotName: 'address',
+  },
+  {
+    title: '操作',
+    dataIndex: 'action',
+    slotName: 'action',
   },
   {
     title: '标签',
     dataIndex: 'Tag',
   },
   {
-    title: '文本哈希',
-    dataIndex: 'TxHash',
-    slotName: 'TxHash',
-  },
-  {
     title: '值',
     dataIndex: 'Value',
     slotName: 'Value',
-  },
-  {
-    title: '源地址',
-    dataIndex: 'FromAddress',
-    slotName: 'FromAddress',
   },
   {
     title: 'block_num',
@@ -336,6 +332,21 @@ const formatValue = (val: string | number) => {
   const num = Number(val)
   if (isNaN(num)) return val
   return num.toFixed(5)
+}
+
+const doDelete = (record: TableRecord) => {
+  if (!record.Address) {
+    Message.error('地址不能为空')
+    return
+  }
+  deleteActivityAddress({ address: record.Address }).then((res) => {
+    if (res.code == 200) {
+      Message.success('删除成功')
+      fetchData()
+    } else {
+      Message.error('删除失败')
+    }
+  })
 }
 </script>
 
