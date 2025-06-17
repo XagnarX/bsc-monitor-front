@@ -46,6 +46,7 @@
               template(#icon)
                 icon-refresh
     .mb-16
+    a-button(type="primary" size="small" @click="batchCopyAddresses" style="margin-bottom: 12px;") 批量复制目标地址
     .table-scroll
       a-table(
         :columns="columns"
@@ -55,6 +56,9 @@
         @change="doTableChange"
         stripe
         style="min-width: 1400px;"
+        row-key="ID"
+        :row-selection="rowSelection"
+        v-model:selectedKeys="selectedRowKeys"
       )
         template(#address="{ record }")
           a-space
@@ -347,6 +351,44 @@ const doDelete = (record: TableRecord) => {
       Message.error('删除失败')
     }
   })
+}
+
+// 在 script 里添加多选相关变量
+const selectedRowKeys = ref<(string|number)[]>([])
+const rowSelection = reactive({
+  type: 'checkbox',
+  showCheckedAll: true,
+  onlyCurrent: false,
+})
+
+// 修改批量复制方法为只复制选中的目标地址
+const batchCopyAddresses = async () => {
+  if (!selectedRowKeys.value.length) {
+    Message.warning('请先选择要复制的目标地址')
+    return
+  }
+  const addresses = dataList.value
+    .filter(item => selectedRowKeys.value.includes(item.ID as string | number))
+    .map(item => item.Address)
+    .filter(Boolean)
+    .join('\n')
+  if (!addresses) {
+    Message.warning('没有可复制的目标地址')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(addresses)
+    Message.success('已复制所选目标地址')
+  } catch (err) {
+    // 降级方案
+    const textarea = document.createElement('textarea')
+    textarea.value = addresses
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+    Message.success('已复制所选目标地址')
+  }
 }
 </script>
 
