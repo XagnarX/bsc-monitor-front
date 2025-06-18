@@ -50,7 +50,7 @@
       </template>
       <template #token_contract="{ record }">
         <a-space>
-          <span>{{ shortHash(record.token_contract) }}</span>
+          <a-link :href="`https://bscscan.com/address/${record.token_contract}`" target="_blank">{{ shortHash(record.token_contract) }}</a-link>
           <a-button type="text" size="mini" @click="copyToClipboard(record.token_contract)">
             <icon-copy />
           </a-button>
