@@ -58,6 +58,12 @@ const menuData = ref<MenuItem[]>([
     icon: markRaw(IconComputer),
     path: '/activity',
   },
+  {
+    key: 'transactions',
+    title: '交易明细',
+    icon: markRaw(IconComputer),
+    path: '/transactions',
+  },
 ])
 
 const selectedKeys = ref<string[]>([])

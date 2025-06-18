@@ -134,3 +134,13 @@ export const removePinnedAddress = async (body: { address: string, tag: string }
     ...(options || {}),
   })
 }
+
+export const getTransactions = async (params: any, options?: { [key: string]: any }) => {
+  return request('/api/transactions/query', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}

@@ -31,6 +31,11 @@ const router = createRouter({
       path:'/address-transactions',
       name:'地址交易明细',
       component:AddressTransactionsView
+    },
+    {
+      path: '/transactions',
+      name: '交易明细',
+      component: () => import('@/views/TransactionsView.vue')
     }
   ],
 })
