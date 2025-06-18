@@ -17,12 +17,15 @@
         <a-button type="primary" @click="togglePolling">{{ isPolling ? '停止轮询' : '开始轮询接口' }}</a-button>
       </a-form-item>
     </a-form>
+    <a-button type="primary" size="small" style="margin: 12px 0;" @click="batchCopyTokenContracts">批量复制接收者</a-button>
     <a-table
       :columns="columns"
       :data="transactions"
       :pagination="false"
       row-key="tx_hash"
       style="margin-top: 20px"
+      :row-selection="rowSelection"
+      v-model:selectedKeys="selectedRowKeys"
     >
       <template #tx_hash="{ record }">
         <a-space>
@@ -150,6 +153,37 @@ const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
     Message.success('已复制')
+  } catch {
+    Message.error('复制失败')
+  }
+}
+
+// 多选相关
+const selectedRowKeys = ref<string[]>([])
+const rowSelection = {
+  type: 'checkbox',
+  showCheckedAll: true,
+  onlyCurrent: false,
+}
+
+// 批量复制接收者
+const batchCopyTokenContracts = async () => {
+  if (!selectedRowKeys.value.length) {
+    Message.warning('请先选择要复制的接收者')
+    return
+  }
+  const contracts = transactions.value
+    .filter(item => selectedRowKeys.value.includes(item.tx_hash))
+    .map(item => item.token_contract)
+    .filter(Boolean)
+    .join('\n')
+  if (!contracts) {
+    Message.warning('没有可复制的接收者')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(contracts)
+    Message.success('已复制所选接收者')
   } catch {
     Message.error('复制失败')
   }

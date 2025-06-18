@@ -67,17 +67,50 @@ const breadcrumbs = computed(() => {
   align-items: center;
   height: 100%;
   padding: 0 20px;
-  background-color: var(--color-bg-1);
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  
+  :deep(.arco-breadcrumb) {
+    color: var(--color-text-2);
+    
+    .arco-breadcrumb-item {
+      color: var(--color-text-2);
+      
+      &:last-child {
+        color: var(--color-text-1);
+      }
+    }
+  }
+}
+
+.header-right {
+  :deep(.arco-badge) {
+    .arco-badge-dot {
+      background-color: var(--color-primary);
+    }
+  }
+  
+  :deep(.arco-dropdown-menu) {
+    background-color: var(--color-bg-3);
+    border: 1px solid var(--color-border-1);
+    
+    .arco-dropdown-option {
+      color: var(--color-text-2);
+      
+      &:hover {
+        background-color: var(--color-bg-4);
+        color: var(--color-text-1);
+      }
+    }
+  }
 }
 
 .trigger {
   font-size: 18px;
   cursor: pointer;
   transition: color 0.3s;
-}
-
-.trigger:hover {
-  color: var(--color-primary);
 }
 </style>

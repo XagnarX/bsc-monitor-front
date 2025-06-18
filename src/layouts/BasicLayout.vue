@@ -39,10 +39,12 @@ const toggleCollapse = () => {
 .h-screen {
   height: 100vh;
 }
+
 .logo {
   height: 32px;
   margin: 16px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
 .fade-enter-active,
@@ -54,12 +56,13 @@ const toggleCollapse = () => {
 .fade-leave-to {
   opacity: 0;
 }
-.content{
+
+.content {
   margin: 15px 20px;
+  padding: 16px;
+  background: transparent;
 }
-.layout :deep(.arco-layout-header){
-  height: 64px;
-}
+
 .sider-toggle-btn {
   position: absolute;
   bottom: 24px;
