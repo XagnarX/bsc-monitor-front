@@ -10,6 +10,9 @@
       <a-form-item label="最小Token数量">
         <a-input v-model="searchParams.min_token_amount" placeholder="最小数量" style="width: 200px;" />
       </a-form-item>
+      <a-form-item label="显示条数">
+        <a-input-number v-model="searchParams.limit" :min="1" placeholder="显示条数" style="width: 120px;" />
+      </a-form-item>
       <a-form-item label="刷新时间(秒)">
         <a-input-number v-model="refreshInterval" :min="1" placeholder="刷新间隔" style="width: 120px;" />
       </a-form-item>
@@ -77,7 +80,7 @@ const searchParams = ref<Record<string, any>>({
   from_addresses: '',
   token_contract: '',
   min_token_amount: '',
-  limit: 100,
+  limit: 10000,
 })
 
 const transactions = ref<any[]>([])
