@@ -7,6 +7,9 @@
       <a-form-item label="Token合约">
         <a-input v-model="searchParams.token_contract" placeholder="token合约地址" style="width: 300px;" />
       </a-form-item>
+      <a-form-item label="起始区块号">
+        <a-input-number v-model="searchParams.startblocknum" placeholder="请输入起始区块号" style="width: 200px;" />
+      </a-form-item>
       <a-form-item label="最小Token数量">
         <a-input v-model="searchParams.min_token_amount" placeholder="最小数量" style="width: 200px;" />
       </a-form-item>
@@ -81,6 +84,7 @@ const searchParams = ref<Record<string, any>>({
   token_contract: '',
   min_token_amount: '',
   limit: 10000,
+  startblocknum: null,
 })
 
 const transactions = ref<any[]>([])

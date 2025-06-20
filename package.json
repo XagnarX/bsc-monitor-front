@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "start:pm2": "serve -s dist -l 5173"
   },
   "dependencies": {
     "@prettier/plugin-pug": "^3.4.0",
