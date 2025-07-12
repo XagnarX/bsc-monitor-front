@@ -4,8 +4,8 @@
       <a-form-item label="From地址">
         <a-input v-model="searchParams.from_addresses" placeholder="多个地址用逗号分隔" style="width: 400px;" />
       </a-form-item>
-      <a-form-item label="Token合约">
-        <a-input v-model="searchParams.token_contract" placeholder="token合约地址" style="width: 300px;" />
+      <a-form-item label="To地址">
+        <a-input v-model="searchParams.to_addresses" placeholder="多个地址用逗号分隔" style="width: 400px;" />
       </a-form-item>
       <a-form-item label="最小区块号">
         <a-input-number v-model="searchParams.min_block_num" placeholder="请输入最小区块号" style="width: 200px;" />
@@ -13,8 +13,11 @@
       <a-form-item label="最大区块号">
         <a-input-number v-model="searchParams.max_block_num" placeholder="请输入最大区块号" style="width: 200px;" />
       </a-form-item>
-      <a-form-item label="最小Token数量">
-        <a-input v-model="searchParams.min_token_amount" placeholder="最小数量" style="width: 200px;" />
+      <a-form-item label="最小BNB数量">
+        <a-input v-model="searchParams.min_value" placeholder="最小数量(BNB)" style="width: 200px;" />
+      </a-form-item>
+      <a-form-item label="最大BNB数量">
+        <a-input v-model="searchParams.max_value" placeholder="最大数量(BNB)" style="width: 200px;" />
       </a-form-item>
       <a-form-item label="显示条数">
         <a-input-number v-model="searchParams.limit" :min="1" placeholder="显示条数" style="width: 120px;" />
@@ -27,7 +30,7 @@
       </a-form-item>
     </a-form>
     <a-space style="margin: 12px 0;">
-      <a-button type="primary" size="small" @click="batchCopyTokenContracts">批量复制接收者</a-button>
+      <a-button type="primary" size="small" @click="batchCopyToAddresses">批量复制接收者</a-button>
       <a-popconfirm content="确认批量将选中的接收者添加到黑名单？" @ok="batchAddToBlacklist">
         <a-button type="primary" size="small" status="danger">批量添加到黑名单</a-button>
       </a-popconfirm>
@@ -74,20 +77,15 @@
           <a-button type="text" size="mini" @click="copyToClipboard(record.to_address)">
             <icon-copy />
           </a-button>
-        </a-space>
-      </template>
-      <template #token_contract="{ record }">
-        <a-space>
-          <a-link :href="`https://bscscan.com/address/${record.token_contract}`" target="_blank">{{ shortHash(record.token_contract) }}</a-link>
-          <a-button type="text" size="mini" @click="copyToClipboard(record.token_contract)">
-            <icon-copy />
-          </a-button>
           <a-popconfirm content="确认将该接收者添加到黑名单？" @ok="addToBlacklist(record)">
             <a-button type="text" size="mini" status="danger">
               <icon-delete />
             </a-button>
           </a-popconfirm>
         </a-space>
+      </template>
+      <template #value="{ record }">
+        <span>{{ formatBnbValue(record.value) }} BNB</span>
       </template>
       <template #timestamp="{ record }">
         <span>{{ formatTime(record.timestamp) }}</span>
@@ -166,13 +164,14 @@
 import { ref, onUnmounted } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconDelete, IconTag, IconInfoCircle } from '@arco-design/web-vue/es/icon'
-import { getTransactions, addReceiverBlacklist, deleteReceiverBlacklist, batchDeleteReceiverBlacklist, getAddressTags, addAddressTag, updateAddressTag, deleteAddressTag, getUniqueAddressTags, batchAddAddressTags } from '@/api/monitor.ts'
+import { getBnbTransactions, addReceiverBlacklist, deleteReceiverBlacklist, batchDeleteReceiverBlacklist, getAddressTags, addAddressTag, deleteAddressTag, getUniqueAddressTags, batchAddAddressTags } from '@/api/monitor.ts'
 import dayjs from 'dayjs'
 
 const searchParams = ref<Record<string, any>>({
   from_addresses: '',
-  token_contract: '',
-  min_token_amount: '',
+  to_addresses: '',
+  min_value: '',
+  max_value: '',
   limit: 1000,
   min_block_num: null,
   max_block_num: null,
@@ -184,9 +183,8 @@ const columns = [
   { title: '区块号', dataIndex: 'block_number' },
   { title: '交易哈希', dataIndex: 'tx_hash', slotName: 'tx_hash' },
   { title: 'From', dataIndex: 'from_address', slotName: 'from_address' },
-  { title: 'ERC20合约', dataIndex: 'to_address', slotName: 'to_address' },
-  { title: 'Token数量', dataIndex: 'token_amount_decimal' },
-  { title: '接收者', dataIndex: 'token_contract', slotName: 'token_contract' },
+  { title: 'To', dataIndex: 'to_address', slotName: 'to_address' },
+  { title: 'BNB数量', dataIndex: 'value', slotName: 'value' },
   { title: '时间', dataIndex: 'timestamp', slotName: 'timestamp' },
 ]
 
@@ -198,6 +196,14 @@ const shortHash = (val: string) => {
 const formatTime = (val: string) => {
   if (!val) return ''
   return dayjs(val).format('YYYY-MM-DD HH:mm:ss')
+}
+
+const formatBnbValue = (val: string | number) => {
+  if (!val) return '0'
+  const num = typeof val === 'string' ? parseFloat(val) : val
+  // 将wei转换为BNB（1 BNB = 10^18 wei）
+  const bnbValue = num / Math.pow(10, 18)
+  return bnbValue.toFixed(6)
 }
 
 const refreshInterval = ref<number>(60)
@@ -233,14 +239,16 @@ const fetchData = async () => {
     Object.keys(params).forEach(key => {
       if (!params[key]) delete params[key]
     })
-    // 处理最小Token数量
-    if (params.min_token_amount) {
-      // 只做一次转换，避免重复点击导致指数增长
-      if (!/e\+?\d+$/i.test(String(params.min_token_amount))) {
-        params.min_token_amount = (BigInt(params.min_token_amount) * 1000000000000000000n).toString()
-      }
+    
+    // 处理BNB数量转换为wei
+    if (params.min_value) {
+      params.min_value = (parseFloat(params.min_value) * Math.pow(10, 18)).toString()
     }
-    const res = await getTransactions(params)
+    if (params.max_value) {
+      params.max_value = (parseFloat(params.max_value) * Math.pow(10, 18)).toString()
+    }
+    
+    const res = await getBnbTransactions(params)
     transactions.value = res.data?.transactions || []
   } catch (e) {
     Message.error('查询失败')
@@ -265,22 +273,22 @@ const rowSelection = {
 }
 
 // 批量复制接收者
-const batchCopyTokenContracts = async () => {
+const batchCopyToAddresses = async () => {
   if (!selectedRowKeys.value.length) {
     Message.warning('请先选择要复制的接收者')
     return
   }
-  const contracts = transactions.value
+  const addresses = transactions.value
     .filter(item => selectedRowKeys.value.includes(item.tx_hash))
-    .map(item => item.token_contract)
+    .map(item => item.to_address)
     .filter(Boolean)
     .join('\n')
-  if (!contracts) {
+  if (!addresses) {
     Message.warning('没有可复制的接收者')
     return
   }
   try {
-    await navigator.clipboard.writeText(contracts)
+    await navigator.clipboard.writeText(addresses)
     Message.success('已复制所选接收者')
   } catch {
     Message.error('复制失败')
@@ -289,19 +297,19 @@ const batchCopyTokenContracts = async () => {
 
 // 添加接收者到黑名单
 const addToBlacklist = async (record: any) => {
-  if (!record.token_contract) {
+  if (!record.to_address) {
     Message.error('接收者地址不能为空')
     return
   }
   try {
     await addReceiverBlacklist({
-      to_address: record.token_contract,
-      data_source: 'query',
-      tag: 'token_transaction'
+      to_address: record.to_address,
+      data_source: 'bnb',
+      tag: 'bnb_transaction'
     })
     Message.success('已添加到黑名单')
     // 从当前列表中移除包含该接收者地址的交易记录
-    transactions.value = transactions.value.filter(item => item.token_contract !== record.token_contract)
+    transactions.value = transactions.value.filter(item => item.to_address !== record.to_address)
   } catch (e) {
     Message.error('添加到黑名单失败')
   }
@@ -316,7 +324,7 @@ const batchAddToBlacklist = async () => {
   
   const selectedReceivers = transactions.value
     .filter(item => selectedRowKeys.value.includes(item.tx_hash))
-    .map(item => item.token_contract)
+    .map(item => item.to_address)
     .filter(Boolean) // 过滤掉空地址
   
   if (!selectedReceivers.length) {
@@ -329,14 +337,14 @@ const batchAddToBlacklist = async () => {
     for (const address of selectedReceivers) {
       await addReceiverBlacklist({
         to_address: address,
-        data_source: 'query',
-        tag: 'token_batch_add'
+        data_source: 'bnb',
+        tag: 'bnb_batch_add'
       })
     }
     Message.success(`成功添加 ${selectedReceivers.length} 个接收者到黑名单`)
     selectedRowKeys.value = [] // 清空选择
     // 从当前列表中移除包含这些接收者地址的交易记录
-    transactions.value = transactions.value.filter(item => !selectedReceivers.includes(item.token_contract))
+    transactions.value = transactions.value.filter(item => !selectedReceivers.includes(item.to_address))
   } catch (e) {
     Message.error('批量添加到黑名单失败')
   }
@@ -442,8 +450,6 @@ const addTag = async () => {
     tagLoading.value = false
   }
 }
-
-
 
 // 删除标签
 const removeTag = async (tag: any) => {

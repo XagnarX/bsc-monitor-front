@@ -52,17 +52,29 @@ const menuData = ref<MenuItem[]>([
     icon: markRaw(IconComputer),
     path: '/analysis',
   },
-  {
-    key: 'activity',
-    title: '活跃度统计',
-    icon: markRaw(IconComputer),
-    path: '/activity',
-  },
+  // {
+  //   key: 'activity',
+  //   title: '活跃度统计',
+  //   icon: markRaw(IconComputer),
+  //   path: '/activity',
+  // },
   {
     key: 'transactions',
     title: '交易明细',
     icon: markRaw(IconComputer),
     path: '/transactions',
+  },
+  {
+    key: 'bnb-transactions',
+    title: 'BNB转账交易',
+    icon: markRaw(IconComputer),
+    path: '/bnb-transactions',
+  },
+  {
+    key: 'receiver-blacklist',
+    title: '接收者黑名单',
+    icon: markRaw(IconComputer),
+    path: '/receiver-blacklist',
   },
 ])
 

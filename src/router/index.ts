@@ -36,6 +36,16 @@ const router = createRouter({
       path: '/transactions',
       name: '交易明细',
       component: () => import('@/views/TransactionsView.vue')
+    },
+    {
+      path: '/receiver-blacklist',
+      name: '接收者黑名单',
+      component: () => import('@/views/ReceiverBlacklistView.vue')
+    },
+    {
+      path: '/bnb-transactions',
+      name: 'BNB转账交易',
+      component: () => import('@/views/BnbTransactionsView.vue')
     }
   ],
 })

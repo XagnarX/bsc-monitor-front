@@ -82,4 +82,17 @@ declare namespace API {
     period: Period
     is_pinned: boolean
   }
+
+  interface BlacklistRecord {
+    id: number
+    to_address: string
+    data_source: string
+    tag?: string
+    created_at: string
+  }
+
+  interface BlacklistPage {
+    total: number
+    blacklist: BlacklistRecord[]
+  }
 }
