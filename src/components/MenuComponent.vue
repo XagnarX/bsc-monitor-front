@@ -71,6 +71,18 @@ const menuData = ref<MenuItem[]>([
     path: '/bnb-transactions',
   },
   {
+    key: 'erc20-events',
+    title: 'ERC-20转账事件',
+    icon: markRaw(IconComputer),
+    path: '/erc20-events',
+  },
+  {
+    key: 'token-management',
+    title: 'ERC-20代币管理',
+    icon: markRaw(IconComputer),
+    path: '/token-management',
+  },
+  {
     key: 'receiver-blacklist',
     title: '接收者黑名单',
     icon: markRaw(IconComputer),

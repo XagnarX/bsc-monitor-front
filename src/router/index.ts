@@ -46,6 +46,16 @@ const router = createRouter({
       path: '/bnb-transactions',
       name: 'BNB转账交易',
       component: () => import('@/views/BnbTransactionsView.vue')
+    },
+    {
+      path: '/erc20-events',
+      name: 'ERC-20转账事件',
+      component: () => import('@/views/Erc20EventsView.vue')
+    },
+    {
+      path: '/token-management',
+      name: 'ERC-20代币管理',
+      component: () => import('@/views/TokenManagementView.vue')
     }
   ],
 })

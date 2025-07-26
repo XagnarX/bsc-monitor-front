@@ -259,3 +259,111 @@ export const getUniqueAddressTags = async (options?: { [key: string]: any }) => 
     ...(options || {}),
   })
 }
+
+// ERC-20转账事件API
+export const getErc20Events = async (params: any, options?: { [key: string]: any }) => {
+  return request('/api/erc20-events/query', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+export const getErc20EventsCount = async (params: any, options?: { [key: string]: any }) => {
+  return request('/api/erc20-events/count', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+export const getErc20EventsStats = async (options?: { [key: string]: any }) => {
+  return request('/api/erc20-events/stats', {
+    method: 'GET',
+    ...(options || {}),
+  })
+}
+
+// ERC-20代币管理API
+export const getAllTokens = async (params?: { contract_address?: string, chain_id?: number, verified?: boolean, format?: string }, options?: { [key: string]: any }) => {
+  return request('/api/tokens', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+export const addToken = async (body: { 
+  token_contract: string, 
+  token_symbol: string, 
+  token_name: string, 
+  token_decimals: number, 
+  chain_id: number, 
+  is_verified?: boolean 
+}, options?: { [key: string]: any }) => {
+  return request('/api/tokens', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
+export const getToken = async (contract: string, chain: number, options?: { [key: string]: any }) => {
+  return request(`/api/tokens/${contract}/${chain}`, {
+    method: 'GET',
+    ...(options || {}),
+  })
+}
+
+export const updateToken = async (contract: string, chain: number, body: { 
+  token_symbol?: string, 
+  token_name?: string, 
+  token_decimals?: number, 
+  is_verified?: boolean 
+}, options?: { [key: string]: any }) => {
+  return request(`/api/tokens/${contract}/${chain}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
+export const deleteToken = async (contract: string, chain: number, options?: { [key: string]: any }) => {
+  return request(`/api/tokens/${contract}/${chain}`, {
+    method: 'DELETE',
+    ...(options || {}),
+  })
+}
+
+export const getTokensByChain = async (chain: number, params?: { verified?: boolean }, options?: { [key: string]: any }) => {
+  return request(`/api/tokens/by-chain/${chain}`, {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+export const updateTokenVerifyStatus = async (contract: string, chain: number, body: { is_verified: boolean }, options?: { [key: string]: any }) => {
+  return request(`/api/tokens/${contract}/${chain}/verify`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
