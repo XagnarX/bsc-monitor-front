@@ -56,6 +56,11 @@ const router = createRouter({
       path: '/token-management',
       name: 'ERC-20代币管理',
       component: () => import('@/views/TokenManagementView.vue')
+    },
+    {
+      path: '/batch-transfers',
+      name: '批量转账查询',
+      component: () => import('@/views/BatchTransfersView.vue')
     }
   ],
 })

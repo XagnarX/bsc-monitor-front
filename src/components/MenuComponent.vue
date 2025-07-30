@@ -77,6 +77,12 @@ const menuData = ref<MenuItem[]>([
     path: '/erc20-events',
   },
   {
+    key: 'batch-transfers',
+    title: '批量转账查询',
+    icon: markRaw(IconComputer),
+    path: '/batch-transfers',
+  },
+  {
     key: 'token-management',
     title: 'ERC-20代币管理',
     icon: markRaw(IconComputer),

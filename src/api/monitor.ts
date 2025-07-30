@@ -367,3 +367,31 @@ export const updateTokenVerifyStatus = async (contract: string, chain: number, b
     ...(options || {}),
   })
 }
+
+// 批量转账相关接口
+export const queryBatchTransfers = async (params: any, options?: { [key: string]: any }) => {
+  return request('/api/batch-transfers/query', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+export const getBatchTransfersCount = async (params: any, options?: { [key: string]: any }) => {
+  return request('/api/batch-transfers/count', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+export const getBatchTransfersStats = async (options?: { [key: string]: any }) => {
+  return request('/api/batch-transfers/stats', {
+    method: 'GET',
+    ...(options || {}),
+  })
+}
