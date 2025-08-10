@@ -284,12 +284,12 @@ const columns = [
     width: 200,
     slotName: 'to_address'
   },
-  {
-    title: '代币合约',
-    dataIndex: 'token_contract',
-    width: 200,
-    slotName: 'token_contract'
-  },
+  // {
+  //   title: '代币合约',
+  //   dataIndex: 'token_contract',
+  //   width: 200,
+  //   slotName: 'token_contract'
+  // },
   {
     title: '转账金额',
     dataIndex: 'amount',
@@ -302,11 +302,11 @@ const columns = [
     width: 100,
     slotName: 'token_type'
   },
-  {
-    title: '函数名称',
-    dataIndex: 'function_name',
-    width: 150
-  },
+  // {
+  //   title: '函数名称',
+  //   dataIndex: 'function_name',
+  //   width: 150
+  // },
   {
     title: '时间',
     dataIndex: 'timestamp',
