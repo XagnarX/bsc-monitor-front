@@ -14,7 +14,7 @@
         <a-input v-model="searchParams.token_contracts" placeholder="多个合约地址用逗号分隔" style="width: 400px;" />
       </a-form-item>
       <a-form-item label="代币类型">
-        <a-select v-model="searchParams.token_types" placeholder="选择代币类型" style="width: 200px;" mode="multiple">
+        <a-select v-model="searchParams.token_types" placeholder="选择代币类型" style="width: 200px;" mode="multiple" allow-clear>
           <a-option value="NATIVE">BNB转账</a-option>
           <a-option value="ERC20">ERC20代币</a-option>
         </a-select>
@@ -23,12 +23,10 @@
         <a-input v-model="searchParams.function_names" placeholder="多个函数名称用逗号分隔" style="width: 300px;" />
       </a-form-item>
       <a-form-item label="最小金额">
-        <a-input v-model="searchParams.min_amount" placeholder="最小金额(wei)" style="width: 200px;" />
-        <a-text type="secondary" style="font-size: 12px;">支持wei格式或小数格式</a-text>
+        <a-input v-model="searchParams.min_amount" placeholder="最小金额(支持小数)" style="width: 200px;" />
       </a-form-item>
       <a-form-item label="最大金额">
-        <a-input v-model="searchParams.max_amount" placeholder="最大金额(wei)" style="width: 200px;" />
-        <a-text type="secondary" style="font-size: 12px;">支持wei格式或小数格式</a-text>
+        <a-input v-model="searchParams.max_amount" placeholder="最大金额(支持小数)" style="width: 200px;" />
       </a-form-item>
       <a-form-item label="最小区块号">
         <a-input-number v-model="searchParams.min_block_num" placeholder="请输入最小区块号" style="width: 200px;" />
@@ -324,15 +322,19 @@ const rowSelection = {
 const convertAmountToWei = (amount: string): string => {
   if (!amount) return ''
   
-  // 如果已经是数字格式（包含小数点），转换为wei
-  if (amount.includes('.')) {
-    const decimalAmount = parseFloat(amount)
-    const weiAmount = BigInt(Math.floor(decimalAmount * Math.pow(10, 18)))
+  // 移除空格
+  const cleanAmount = amount.trim()
+  
+  // 尝试解析为数字
+  const numericAmount = parseFloat(cleanAmount)
+  if (!isNaN(numericAmount)) {
+    // 所有数字输入都乘以 10^18
+    const weiAmount = BigInt(Math.floor(numericAmount * Math.pow(10, 18)))
     return weiAmount.toString()
   }
   
-  // 如果已经是wei格式，直接返回
-  return amount
+  // 如果无法解析为数字，返回原值
+  return cleanAmount
 }
 
 const fetchData = async () => {
