@@ -15,7 +15,8 @@ export default defineConfig({
     port: 5173,
     open: true,
     allowedHosts: [
-      'bscmontiorf.vip.cpolar.cn'
+      'bscmontiorf.vip.cpolar.cn',
+      'api.local' // 允许通过 hostname 访问
     ]
   },
   resolve: {

@@ -1,5 +1,6 @@
-// 跨设备访问场景：前后端都在 192.168.31.217，从其他设备访问
-export const host: string = '192.168.31.217:8080'
+// 使用 hostname 映射解决跨设备剪贴板权限问题
+// 需要在两台设备的 hosts 文件中添加：192.168.31.217 api.local
+export const host: string = 'api.local:8080'
 export const baseURL: string = `http://${host}/`
 
 // 远程服务器配置（备用）
