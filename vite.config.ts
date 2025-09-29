@@ -11,6 +11,8 @@ export default defineConfig({
     vueDevTools(),
   ],
   server: {
+    host: '0.0.0.0', // 允许从其他设备访问
+    port: 5173,
     open: true,
     allowedHosts: [
       'bscmontiorf.vip.cpolar.cn'

@@ -1,12 +1,19 @@
 import { Message } from '@arco-design/web-vue'
 
 /**
- * Universal clipboard copy function - always works regardless of security context
- * Uses the most reliable method that works everywhere
+ * Universal clipboard copy function with modern API preference
+ * Uses hostname mapping to ensure secure context for modern clipboard API
  */
 export const copyToClipboard = async (text: string, successMessage = '已复制', errorMessage = '复制失败') => {
   try {
-    // Create invisible textarea element
+    // Method 1: Modern Clipboard API (preferred in secure contexts)
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      Message.success(successMessage)
+      return
+    }
+    
+    // Method 2: Fallback using Selection API + execCommand
     const textArea = document.createElement('textarea')
     textArea.value = text
     textArea.style.position = 'absolute'
@@ -23,8 +30,8 @@ export const copyToClipboard = async (text: string, successMessage = '已复制'
     textArea.select()
     textArea.setSelectionRange(0, text.length)
     
-    // Copy using execCommand (works in all contexts)
-    // @ts-ignore - execCommand is deprecated but universally supported
+    // Copy using execCommand
+    // @ts-ignore - execCommand is deprecated but needed for fallback
     const successful = document.execCommand('copy')
     
     // Clean up
