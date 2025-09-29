@@ -280,12 +280,7 @@ const batchCopyToAddresses = async () => {
     Message.warning('没有可复制的接收者')
     return
   }
-  try {
-    await navigator.clipboard.writeText(addresses)
-    Message.success('已复制所选接收者')
-  } catch {
-    Message.error('复制失败')
-  }
+  copyToClipboard(addresses, '已复制所选接收者', '复制失败')
 }
 
 // 添加接收者到黑名单

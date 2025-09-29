@@ -362,19 +362,7 @@ const batchCopyAddresses = async () => {
     Message.warning('没有可复制的目标地址')
     return
   }
-  try {
-    await navigator.clipboard.writeText(addresses)
-    Message.success('已复制所选目标地址')
-  } catch (err) {
-    // 降级方案
-    const textarea = document.createElement('textarea')
-    textarea.value = addresses
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    Message.success('已复制所选目标地址')
-  }
+  copyToClipboard(addresses, '已复制所选目标地址', '复制失败')
 }
 </script>
 
