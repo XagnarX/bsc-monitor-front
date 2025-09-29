@@ -63,6 +63,7 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconDelete, IconRefresh } from '@arco-design/web-vue/es/icon'
 import { getReceiverBlacklist, deleteReceiverBlacklist } from '@/api/monitor.ts'
+import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from 'dayjs'
 import type { TableColumnData } from '@arco-design/web-vue'
 
@@ -218,21 +219,6 @@ const getDataSourceColor = (dataSource: string) => {
 }
 
 // 复制到剪贴板
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    Message.success('地址已复制')
-  } catch (err) {
-    // 降级方案
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    Message.success('地址已复制')
-  }
-}
 
 // 删除单个地址
 const deleteAddress = async (record: BlacklistRecord) => {

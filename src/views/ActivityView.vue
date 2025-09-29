@@ -97,6 +97,7 @@
 <script setup lang="ts">
 import { ref, onUnmounted, onMounted, watch } from 'vue'
 import { getActivityStats, deleteActivityAddress, getAddressTransactions, getPinnedAddresses, addPinnedAddress, removePinnedAddress } from '@/api/monitor.ts'
+import { copyToClipboard } from '@/utils/clipboard'
 import { Message } from '@arco-design/web-vue'
 import dayjs from 'dayjs'
 import { useRouter } from 'vue-router'
@@ -267,14 +268,6 @@ const formatAddress = (address: string) => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    Message.success('复制成功')
-  } catch (e) {
-    Message.error('复制失败')
-  }
-}
 
 const txColumns = [
   { 

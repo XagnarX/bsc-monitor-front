@@ -170,6 +170,7 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconTag, IconDelete } from '@arco-design/web-vue/es/icon'
 import { queryBatchTransfers, addReceiverBlacklist, addAddressTag, getBatchTransfersStats } from '@/api/monitor'
+import { copyToClipboard } from '@/utils/clipboard'
 
 interface BatchTransferRecord {
   id: number
@@ -451,15 +452,6 @@ const formatAmount = (amount: string, tokenType: string) => {
   return amount
 }
 
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    Message.success('已复制到剪贴板')
-  } catch (error) {
-    console.error('复制失败:', error)
-    Message.error('复制失败')
-  }
-}
 
 const batchCopyToAddresses = () => {
   const selectedRecords = transfers.value.filter(record => selectedRowKeys.value.includes(record.id.toString()))

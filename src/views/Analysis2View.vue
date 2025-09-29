@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { analysis2, getAllTags, queryTagByFromAddress, deleteActivityAddress } from '@/api/monitor.ts'
+import { copyToClipboard } from '@/utils/clipboard'
 import { IconCopy, IconRefresh, IconDelete } from '@arco-design/web-vue/es/icon'
 import { Message } from '@arco-design/web-vue'
 import dayjs from 'dayjs'
@@ -241,21 +242,6 @@ onMounted(() => {
   getAllTagList()
 })
 // 复制文本到剪贴板
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    Message.success('地址已复制')
-  } catch (err) {
-    // 降级方案
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    Message.success('地址已复制')
-  }
-}
 const tagOptions = ref<TagOption[]>([])
 const getAllTagList = async () => {
   const res = await getAllTags()

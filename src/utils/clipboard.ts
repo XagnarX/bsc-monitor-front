@@ -1,55 +1,44 @@
 import { Message } from '@arco-design/web-vue'
 
 /**
- * Universal clipboard copy function with fallback support
- * Works in both secure (HTTPS/localhost) and insecure contexts
+ * Universal clipboard copy function - always works regardless of security context
+ * Uses the most reliable method that works everywhere
  */
 export const copyToClipboard = async (text: string, successMessage = '已复制', errorMessage = '复制失败') => {
   try {
-    // Method 1: Modern Clipboard API (requires secure context)
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text)
+    // Create invisible textarea element
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'absolute'
+    textArea.style.left = '-9999px'
+    textArea.style.top = '-9999px'
+    textArea.style.opacity = '0'
+    textArea.setAttribute('readonly', '')
+    textArea.setAttribute('tabindex', '-1')
+    
+    document.body.appendChild(textArea)
+    
+    // Focus and select the text
+    textArea.focus()
+    textArea.select()
+    textArea.setSelectionRange(0, text.length)
+    
+    // Copy using execCommand (works in all contexts)
+    // @ts-ignore - execCommand is deprecated but universally supported
+    const successful = document.execCommand('copy')
+    
+    // Clean up
+    document.body.removeChild(textArea)
+    
+    if (successful) {
       Message.success(successMessage)
-      return
-    }
-
-    // Method 2: Selection API (more modern than execCommand)
-    if (navigator.userAgent && 'clipboard' in navigator) {
-      try {
-        const textArea = document.createElement('textarea')
-        textArea.value = text
-        textArea.style.position = 'fixed'
-        textArea.style.left = '-999999px'
-        textArea.style.top = '-999999px'
-        textArea.setAttribute('readonly', '')
-        document.body.appendChild(textArea)
-        
-        // Use Selection API
-        textArea.select()
-        textArea.setSelectionRange(0, text.length)
-        
-        // @ts-ignore - We know execCommand is deprecated but it's our last resort
-        const successful = document.execCommand('copy')
-        document.body.removeChild(textArea)
-        
-        if (successful) {
-          Message.success(successMessage)
-          return
-        }
-      } catch (fallbackError) {
-        console.warn('Selection API fallback failed:', fallbackError)
-      }
-    }
-
-    // Method 3: Last resort - ask user to copy manually
-    if (window.prompt) {
-      window.prompt('请手动复制以下内容:', text)
-      Message.warning('请手动复制内容')
     } else {
-      throw new Error('All clipboard methods failed')
+      throw new Error('Copy command failed')
     }
   } catch (err) {
-    console.error('Copy to clipboard failed:', err)
-    Message.error(errorMessage)
+    console.error('Copy failed:', err)
+    // Final fallback - show text in alert for user to copy manually
+    alert(`复制内容: ${text}`)
+    Message.warning('请手动复制上方内容')
   }
 }

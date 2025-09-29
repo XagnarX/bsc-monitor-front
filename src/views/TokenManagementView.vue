@@ -189,6 +189,7 @@ import {
   deleteToken, 
   updateTokenVerifyStatus 
 } from '@/api/monitor.ts'
+import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from 'dayjs'
 
 // 接口类型定义
@@ -314,14 +315,6 @@ const formatTime = (val: string) => {
   return dayjs(val).format('YYYY-MM-DD HH:mm:ss')
 }
 
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    Message.success('已复制')
-  } catch {
-    Message.error('复制失败')
-  }
-}
 
 // 数据获取
 const fetchData = async () => {

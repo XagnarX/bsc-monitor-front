@@ -165,6 +165,7 @@ import { ref, onUnmounted } from 'vue'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconDelete, IconTag, IconInfoCircle } from '@arco-design/web-vue/es/icon'
 import { getBnbTransactions, addReceiverBlacklist, deleteReceiverBlacklist, batchDeleteReceiverBlacklist, getAddressTags, addAddressTag, deleteAddressTag, getUniqueAddressTags, batchAddAddressTags } from '@/api/monitor.ts'
+import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from 'dayjs'
 
 const searchParams = ref<Record<string, any>>({
@@ -255,14 +256,6 @@ const fetchData = async () => {
   }
 }
 
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    Message.success('已复制')
-  } catch {
-    Message.error('复制失败')
-  }
-}
 
 // 多选相关
 const selectedRowKeys = ref<string[]>([])

@@ -47,6 +47,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { delTarget, getAllTargets, addTarget } from '@/api/monitor.ts'
+import { copyToClipboard } from '@/utils/clipboard'
 import { IconCopy, IconDelete, IconPlus, IconRefresh } from '@arco-design/web-vue/es/icon'
 import { Message } from '@arco-design/web-vue'
 
@@ -135,21 +136,6 @@ onMounted(() => {
 })
 
 // 复制文本到剪贴板
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text)
-    Message.success('地址已复制')
-  } catch (err) {
-    // 降级方案
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    Message.success('地址已复制')
-  }
-}
 
 const visible = ref(false)
 const addLoading = ref(false)
