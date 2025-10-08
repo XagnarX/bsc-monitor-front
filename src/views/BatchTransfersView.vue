@@ -46,7 +46,8 @@
     </a-form>
     
     <a-space style="margin: 12px 0;">
-      <a-button type="primary" size="small" @click="batchCopyToAddresses">批量复制To地址</a-button>
+      <a-button type="primary" size="small" @click="batchCopyToAddresses">去重并批量复制To地址</a-button>
+      <a-button type="primary" size="small" @click="fillToAddressesToFrom">将To地址填入From筛选</a-button>
       <a-popconfirm content="确认批量将选中的To地址添加到黑名单？" @ok="batchAddToBlacklist">
         <a-button type="primary" size="small" status="danger">批量添加到黑名单</a-button>
       </a-popconfirm>
@@ -454,14 +455,51 @@ const formatAmount = (amount: string, tokenType: string) => {
 
 
 const batchCopyToAddresses = () => {
-  const selectedRecords = transfers.value.filter(record => selectedRowKeys.value.includes(record.id.toString()))
-  const addresses = selectedRecords.map(record => record.to_address).join('\n')
-  
-  if (addresses) {
-    copyToClipboard(addresses)
-  } else {
+  if (!selectedRowKeys.value.length) {
     Message.warning('请先选择要复制的记录')
+    return
   }
+
+  // Convert selectedRowKeys to strings for comparison
+  const selectedIds = selectedRowKeys.value.map(key => String(key))
+  const selectedRecords = transfers.value.filter(record => selectedIds.includes(String(record.id)))
+  const toAddresses = selectedRecords.map(record => record.to_address).filter(Boolean)
+
+  // Deduplicate addresses using Set
+  const uniqueAddresses = [...new Set(toAddresses)]
+
+  if (uniqueAddresses.length === 0) {
+    Message.warning('没有可复制的To地址')
+    return
+  }
+
+  const addresses = uniqueAddresses.join('\n')
+  copyToClipboard(addresses)
+  Message.success(`已复制 ${uniqueAddresses.length} 个去重后的To地址`)
+}
+
+const fillToAddressesToFrom = () => {
+  if (!selectedRowKeys.value.length) {
+    Message.warning('请先选择要处理的记录')
+    return
+  }
+
+  // Convert selectedRowKeys to strings for comparison
+  const selectedIds = selectedRowKeys.value.map(key => String(key))
+  const selectedRecords = transfers.value.filter(record => selectedIds.includes(String(record.id)))
+  const toAddresses = selectedRecords.map(record => record.to_address).filter(Boolean)
+
+  // Deduplicate addresses using Set
+  const uniqueAddresses = [...new Set(toAddresses)]
+
+  if (uniqueAddresses.length === 0) {
+    Message.warning('没有可填入的To地址')
+    return
+  }
+
+  // Fill into From address filter with comma separation
+  searchParams.from_addresses = uniqueAddresses.join(',')
+  Message.success(`已将 ${uniqueAddresses.length} 个去重后的To地址填入From筛选`)
 }
 
 const addToBlacklist = async (record: BatchTransferRecord) => {
@@ -483,10 +521,17 @@ const addToBlacklist = async (record: BatchTransferRecord) => {
 }
 
 const batchAddToBlacklist = async () => {
-  const selectedRecords = transfers.value.filter(record => selectedRowKeys.value.includes(record.id.toString()))
-  
-  if (selectedRecords.length === 0) {
+  if (!selectedRowKeys.value.length) {
     Message.warning('请先选择要添加到黑名单的记录')
+    return
+  }
+
+  // Convert selectedRowKeys to strings for comparison
+  const selectedIds = selectedRowKeys.value.map(key => String(key))
+  const selectedRecords = transfers.value.filter(record => selectedIds.includes(String(record.id)))
+
+  if (selectedRecords.length === 0) {
+    Message.warning('没有可添加到黑名单的To地址')
     return
   }
   
@@ -507,14 +552,21 @@ const batchAddToBlacklist = async () => {
 }
 
 const showBatchTagModal = () => {
-  const selectedRecords = transfers.value.filter(record => selectedRowKeys.value.includes(record.id.toString()))
-  
-  if (selectedRecords.length === 0) {
+  if (!selectedRowKeys.value.length) {
     Message.warning('请先选择要添加标签的记录')
     return
   }
-  
-  const addresses = selectedRecords.map(record => record.to_address).join('\n')
+
+  // Convert selectedRowKeys to strings for comparison
+  const selectedIds = selectedRowKeys.value.map(key => String(key))
+  const selectedRecords = transfers.value.filter(record => selectedIds.includes(String(record.id)))
+
+  if (selectedRecords.length === 0) {
+    Message.warning('没有可添加标签的To地址')
+    return
+  }
+
+  const addresses = selectedRecords.map(record => record.to_address).filter(Boolean).join('\n')
   batchTagForm.addresses = addresses
   batchTagForm.tag = ''
   batchTagModalVisible.value = true

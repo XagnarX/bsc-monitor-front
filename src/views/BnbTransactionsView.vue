@@ -30,7 +30,8 @@
       </a-form-item>
     </a-form>
     <a-space style="margin: 12px 0;">
-      <a-button type="primary" size="small" @click="batchCopyToAddresses">批量复制接收者</a-button>
+      <a-button type="primary" size="small" @click="batchCopyToAddresses">去重并批量复制To地址</a-button>
+      <a-button type="primary" size="small" @click="fillToAddressesToFrom">将To地址填入From筛选</a-button>
       <a-popconfirm content="确认批量将选中的接收者添加到黑名单？" @ok="batchAddToBlacklist">
         <a-button type="primary" size="small" status="danger">批量添加到黑名单</a-button>
       </a-popconfirm>
@@ -265,22 +266,53 @@ const rowSelection = {
   onlyCurrent: false,
 }
 
-// 批量复制接收者
+// 去重并批量复制To地址
 const batchCopyToAddresses = async () => {
   if (!selectedRowKeys.value.length) {
-    Message.warning('请先选择要复制的接收者')
+    Message.warning('请先选择要复制的记录')
     return
   }
-  const addresses = transactions.value
+
+  const toAddresses = transactions.value
     .filter(item => selectedRowKeys.value.includes(item.tx_hash))
     .map(item => item.to_address)
     .filter(Boolean)
-    .join('\n')
-  if (!addresses) {
-    Message.warning('没有可复制的接收者')
+
+  // Deduplicate addresses using Set
+  const uniqueAddresses = [...new Set(toAddresses)]
+
+  if (!uniqueAddresses.length) {
+    Message.warning('没有可复制的To地址')
     return
   }
-  copyToClipboard(addresses, '已复制所选接收者', '复制失败')
+
+  const addresses = uniqueAddresses.join('\n')
+  copyToClipboard(addresses, `已复制 ${uniqueAddresses.length} 个去重后的To地址`, '复制失败')
+}
+
+// 将To地址填入From筛选
+const fillToAddressesToFrom = () => {
+  if (!selectedRowKeys.value.length) {
+    Message.warning('请先选择要处理的记录')
+    return
+  }
+
+  const toAddresses = transactions.value
+    .filter(item => selectedRowKeys.value.includes(item.tx_hash))
+    .map(item => item.to_address)
+    .filter(Boolean)
+
+  // Deduplicate addresses using Set
+  const uniqueAddresses = [...new Set(toAddresses)]
+
+  if (!uniqueAddresses.length) {
+    Message.warning('没有可填入的To地址')
+    return
+  }
+
+  // Fill into From address filter with comma separation
+  searchParams.value.from_addresses = uniqueAddresses.join(',')
+  Message.success(`已将 ${uniqueAddresses.length} 个去重后的To地址填入From筛选`)
 }
 
 // 添加接收者到黑名单
