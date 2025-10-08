@@ -273,7 +273,7 @@ const rowSelection = {
 }
 
 // 去重并批量复制To地址
-const batchCopyToAddresses = async () => {
+const batchCopyToAddresses = () => {
   if (!selectedRowKeys.value.length) {
     Message.warning('请先选择要复制的记录')
     return
@@ -294,12 +294,7 @@ const batchCopyToAddresses = async () => {
   }
 
   const addresses = uniqueAddresses.join('\n')
-  try {
-    await navigator.clipboard.writeText(addresses)
-    Message.success(`已复制 ${uniqueAddresses.length} 个去重后的To地址`)
-  } catch {
-    Message.error('复制失败')
-  }
+  copyToClipboard(addresses, `已复制 ${uniqueAddresses.length} 个去重后的To地址`, '复制失败')
 }
 
 // 将To地址填入From筛选
