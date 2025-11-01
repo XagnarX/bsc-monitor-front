@@ -16,7 +16,8 @@ export default defineConfig({
     open: true,
     allowedHosts: [
       'bscmontiorf.vip.cpolar.cn',
-      'api.local' // 允许通过 hostname 访问
+      'api.local', // 允许通过 hostname 访问
+      'localhost'
     ]
   },
   resolve: {

@@ -95,4 +95,45 @@ declare namespace API {
     total: number
     blacklist: BlacklistRecord[]
   }
+
+  // Internal Transactions related types
+  interface InternalTransaction {
+    blockNumber: string
+    contractAddress: string
+    errCode: string
+    from: string
+    gas: string
+    gasUsed: string
+    hash: string
+    input: string
+    isError: string
+    timeStamp: string
+    to: string
+    traceId: string
+    type: string
+    value: string
+  }
+
+  interface InternalTransactionsResponse {
+    message: string
+    page: number
+    page_size: number
+    result: InternalTransaction[]
+    status: string
+    total: number
+    total_pages: number
+  }
+
+  interface InternalTransactionsQuery {
+    module?: string
+    action?: string
+    address?: string
+    startblock?: number
+    endblock?: number
+    page?: number
+    offset?: number
+    sort?: 'asc' | 'desc'
+    min_block_txs?: number
+    min_subcalls?: number
+  }
 }

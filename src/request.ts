@@ -6,6 +6,7 @@ const request = axios.create({
   timeout: 60000,
   withCredentials: true,
 })
+
 request.interceptors.request.use(
   (config) => {
     // config.headers['satoken'] = 'Bearer ' + sessionStorage.getItem('satoken')

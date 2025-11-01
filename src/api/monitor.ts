@@ -395,3 +395,16 @@ export const getBatchTransfersStats = async (options?: { [key: string]: any }) =
     ...(options || {}),
   })
 }
+
+// Internal Transactions API
+export const getInternalTransactions = async (params: API.InternalTransactionsQuery, options?: { [key: string]: any }) => {
+  return request('/api/account/txlistinternal', {
+    method: 'GET',
+    params: {
+      module: 'account',
+      action: 'txlistinternal',
+      ...params,
+    },
+    ...(options || {}),
+  })
+}

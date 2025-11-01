@@ -83,6 +83,12 @@ const menuData = ref<MenuItem[]>([
     path: '/batch-transfers',
   },
   {
+    key: 'internal-transactions',
+    title: '内部交易查询',
+    icon: markRaw(IconComputer),
+    path: '/internal-transactions',
+  },
+  {
     key: 'token-management',
     title: 'ERC-20代币管理',
     icon: markRaw(IconComputer),

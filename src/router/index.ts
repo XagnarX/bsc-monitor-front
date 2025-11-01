@@ -61,6 +61,11 @@ const router = createRouter({
       path: '/batch-transfers',
       name: '批量转账查询',
       component: () => import('@/views/BatchTransfersView.vue')
+    },
+    {
+      path: '/internal-transactions',
+      name: '内部交易查询',
+      component: () => import('@/views/InternalTransactionsView.vue')
     }
   ],
 })
