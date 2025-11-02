@@ -66,6 +66,11 @@ const router = createRouter({
       path: '/internal-transactions',
       name: '内部交易查询',
       component: () => import('@/views/InternalTransactionsView.vue')
+    },
+    {
+      path: '/usdt-transfers',
+      name: 'USDT转账查询',
+      component: () => import('@/views/UsdtTransfersView.vue')
     }
   ],
 })

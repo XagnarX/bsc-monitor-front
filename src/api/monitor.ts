@@ -408,3 +408,24 @@ export const getInternalTransactions = async (params: API.InternalTransactionsQu
     ...(options || {}),
   })
 }
+
+// USDT Monitor API
+export const getUsdtReceipts = async (params?: any, options?: { [key: string]: any }) => {
+  return request('/api/usdt-monitor/receipts', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+export const getUsdtTargets = async (params?: any, options?: { [key: string]: any }) => {
+  return request('/api/usdt-monitor/targets', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}

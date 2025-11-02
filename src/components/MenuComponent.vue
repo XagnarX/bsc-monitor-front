@@ -89,6 +89,12 @@ const menuData = ref<MenuItem[]>([
     path: '/internal-transactions',
   },
   {
+    key: 'usdt-transfers',
+    title: 'USDT转账查询',
+    icon: markRaw(IconComputer),
+    path: '/usdt-transfers',
+  },
+  {
     key: 'token-management',
     title: 'ERC-20代币管理',
     icon: markRaw(IconComputer),
