@@ -429,3 +429,69 @@ export const getUsdtTargets = async (params?: any, options?: { [key: string]: an
     ...(options || {}),
   })
 }
+
+// USDT sender group statistics API
+export const getUsdtSenderGroupStats = async (params?: any, options?: { [key: string]: any }) => {
+  return request('/api/usdt-monitor/receipts/group-by-sender', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+// USDT Blacklist Management API
+export const addBlacklistAddresses = async (
+  body: { addresses: string[], reason?: string, created_by?: string },
+  options?: { [key: string]: any }
+) => {
+  return request('/api/usdt-monitor/blacklist', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
+export const removeBlacklistAddresses = async (
+  body: { addresses: string[] },
+  options?: { [key: string]: any }
+) => {
+  return request('/api/usdt-monitor/blacklist', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  })
+}
+
+export const getBlacklist = async (
+  params?: { page?: number, limit?: number, address?: string },
+  options?: { [key: string]: any }
+) => {
+  return request('/api/usdt-monitor/blacklist', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+export const checkBlacklistStatus = async (
+  params: { address: string },
+  options?: { [key: string]: any }
+) => {
+  return request('/api/usdt-monitor/blacklist/check', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
