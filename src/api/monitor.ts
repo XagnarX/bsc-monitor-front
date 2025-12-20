@@ -495,3 +495,28 @@ export const checkBlacklistStatus = async (
     ...(options || {}),
   })
 }
+
+// Token Filter Analysis Aggregate API
+export const getTokenFilterAnalysisAggregate = async (
+  params: {
+    contractAddress: string;
+    decimals: number;
+    limit?: number;
+    startBlock?: number;
+    endBlock?: number;
+    minAmount?: string;
+    maxAmount?: string;
+    buyAddressGroups?: { from: string; to: string; }[];
+    sellAddressGroups?: { from: string; to: string; }[];
+  },
+  options?: { [key: string]: any }
+) => {
+  return request('/api/token-filter-analysis/aggregate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: params,
+    ...(options || {}),
+  })
+}

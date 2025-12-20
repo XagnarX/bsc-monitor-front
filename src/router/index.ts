@@ -71,6 +71,11 @@ const router = createRouter({
       path: '/usdt-transfers',
       name: 'USDT转账查询',
       component: () => import('@/views/UsdtTransfersView.vue')
+    },
+    {
+      path: '/token-filter-analysis',
+      name: 'Token筛选分析',
+      component: () => import('@/views/TokenFilterAnalysisView.vue')
     }
   ],
 })

@@ -42,6 +42,7 @@ declare namespace API {
     from_addresses?: string;
     start_time?: string;
     end_time?: string;
+    decimals?: number;
   }
   type AnalysisResult = {
     ID?: number;

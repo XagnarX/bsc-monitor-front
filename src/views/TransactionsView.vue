@@ -16,6 +16,9 @@
       <a-form-item label="最小Token数量">
         <a-input v-model="searchParams.min_token_amount" placeholder="最小数量" style="width: 200px;" />
       </a-form-item>
+      <a-form-item label="decimals">
+        <a-input-number v-model="searchParams.decimals" :min="0" :max="36" placeholder="精度" style="width: 100px;" />
+      </a-form-item>
       <a-form-item label="显示条数">
         <a-input-number v-model="searchParams.limit" :min="1" placeholder="显示条数" style="width: 120px;" />
       </a-form-item>
@@ -27,11 +30,7 @@
       </a-form-item>
     </a-form>
     <a-space style="margin: 12px 0;">
-      <a-button type="primary" size="small" @click="batchCopyTokenContracts">批量复制接收者</a-button>
-      <a-popconfirm content="确认批量将选中的接收者添加到黑名单？" @ok="batchAddToBlacklist">
-        <a-button type="primary" size="small" status="danger">批量添加到黑名单</a-button>
-      </a-popconfirm>
-      <a-button type="primary" size="small" @click="showBatchTagModal">批量添加地址标签</a-button>
+      <a-button type="primary" size="small" @click="batchCopyToAddresses">批量复制To地址</a-button>
     </a-space>
     <a-table
       :columns="columns"
@@ -76,18 +75,8 @@
           </a-button>
         </a-space>
       </template>
-      <template #token_contract="{ record }">
-        <a-space>
-          <a-link :href="`https://bscscan.com/address/${record.token_contract}`" target="_blank">{{ shortHash(record.token_contract) }}</a-link>
-          <a-button type="text" size="mini" @click="copyToClipboard(record.token_contract)">
-            <icon-copy />
-          </a-button>
-          <a-popconfirm content="确认将该接收者添加到黑名单？" @ok="addToBlacklist(record)">
-            <a-button type="text" size="mini" status="danger">
-              <icon-delete />
-            </a-button>
-          </a-popconfirm>
-        </a-space>
+      <template #token_amount="{ record }">
+        <span>{{ formatTokenAmount(record.token_amount) }}</span>
       </template>
       <template #timestamp="{ record }">
         <span>{{ formatTime(record.timestamp) }}</span>
@@ -163,20 +152,94 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconDelete, IconTag, IconInfoCircle } from '@arco-design/web-vue/es/icon'
-import { getTransactions, addReceiverBlacklist, deleteReceiverBlacklist, batchDeleteReceiverBlacklist, getAddressTags, addAddressTag, updateAddressTag, deleteAddressTag, getUniqueAddressTags, batchAddAddressTags } from '@/api/monitor.ts'
+import { getTransactions, getAddressTags, addAddressTag, updateAddressTag, deleteAddressTag, getUniqueAddressTags, batchAddAddressTags } from '@/api/monitor.ts'
 import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from 'dayjs'
+
+const route = useRoute()
+const router = useRouter()
 
 const searchParams = ref<Record<string, any>>({
   from_addresses: '',
   token_contract: '',
   min_token_amount: '',
+  decimals: 18,
   limit: 1000,
   min_block_num: null,
   max_block_num: null,
+})
+
+// 从 URL 参数初始化 searchParams
+const initializeFromUrl = () => {
+  const query = route.query
+  if (query.from_addresses) searchParams.value.from_addresses = String(query.from_addresses)
+  if (query.token_contract) searchParams.value.token_contract = String(query.token_contract)
+  if (query.min_token_amount) searchParams.value.min_token_amount = String(query.min_token_amount)
+  if (query.decimals) searchParams.value.decimals = parseInt(String(query.decimals)) || 18
+  if (query.limit) searchParams.value.limit = parseInt(String(query.limit)) || 1000
+  if (query.min_block_num) searchParams.value.min_block_num = parseInt(String(query.min_block_num))
+  if (query.max_block_num) searchParams.value.max_block_num = parseInt(String(query.max_block_num))
+}
+
+// 监听 searchParams 变化，更新 URL（避免无限循环）
+let isUpdatingFromUrl = false
+watch(searchParams, (newValue) => {
+  if (isUpdatingFromUrl) return
+
+  // 构建查询参数对象，只包含非空值
+  const query: Record<string, any> = {}
+  if (newValue.from_addresses) query.from_addresses = newValue.from_addresses
+  if (newValue.token_contract) query.token_contract = newValue.token_contract
+  if (newValue.min_token_amount) query.min_token_amount = newValue.min_token_amount
+  if (newValue.decimals !== null && newValue.decimals !== undefined) query.decimals = newValue.decimals
+  if (newValue.limit) query.limit = newValue.limit
+  if (newValue.min_block_num !== null && newValue.min_block_num !== undefined) query.min_block_num = newValue.min_block_num
+  if (newValue.max_block_num !== null && newValue.max_block_num !== undefined) query.max_block_num = newValue.max_block_num
+
+  // 更新 URL，不触发导航
+  router.replace({ query }).catch(() => {})
+}, { deep: true })
+
+// 监听路由变化，更新 searchParams
+watch(() => route.query, (newQuery) => {
+  isUpdatingFromUrl = true
+  if (newQuery.from_addresses) searchParams.value.from_addresses = String(newQuery.from_addresses)
+  else searchParams.value.from_addresses = ''
+
+  if (newQuery.token_contract) searchParams.value.token_contract = String(newQuery.token_contract)
+  else searchParams.value.token_contract = ''
+
+  if (newQuery.min_token_amount) searchParams.value.min_token_amount = String(newQuery.min_token_amount)
+  else searchParams.value.min_token_amount = ''
+
+  if (newQuery.decimals) searchParams.value.decimals = parseInt(String(newQuery.decimals)) || 18
+  else searchParams.value.decimals = 18
+
+  if (newQuery.limit) searchParams.value.limit = parseInt(String(newQuery.limit)) || 1000
+  else searchParams.value.limit = 1000
+
+  if (newQuery.min_block_num) searchParams.value.min_block_num = parseInt(String(newQuery.min_block_num))
+  else searchParams.value.min_block_num = null
+
+  if (newQuery.max_block_num) searchParams.value.max_block_num = parseInt(String(newQuery.max_block_num))
+  else searchParams.value.max_block_num = null
+
+  isUpdatingFromUrl = false
+}, { deep: true })
+
+// 组件挂载后初始化
+onMounted(() => {
+  // 组件加载时初始化参数
+  initializeFromUrl()
+
+  // 如果 URL 中有查询参数，自动获取数据
+  if (Object.keys(route.query).length > 0) {
+    fetchData()
+  }
 })
 
 const transactions = ref<any[]>([])
@@ -185,9 +248,8 @@ const columns = [
   { title: '区块号', dataIndex: 'block_number' },
   { title: '交易哈希', dataIndex: 'tx_hash', slotName: 'tx_hash' },
   { title: 'From', dataIndex: 'from_address', slotName: 'from_address' },
-  { title: 'ERC20合约', dataIndex: 'to_address', slotName: 'to_address' },
-  { title: 'Token数量', dataIndex: 'token_amount_decimal' },
-  { title: '接收者', dataIndex: 'token_contract', slotName: 'token_contract' },
+  { title: 'To地址', dataIndex: 'to_address', slotName: 'to_address' },
+  { title: 'Token数量', dataIndex: 'token_amount', slotName: 'token_amount' },
   { title: '时间', dataIndex: 'timestamp', slotName: 'timestamp' },
 ]
 
@@ -199,6 +261,15 @@ const shortHash = (val: string) => {
 const formatTime = (val: string) => {
   if (!val) return ''
   return dayjs(val).format('YYYY-MM-DD HH:mm:ss')
+}
+
+const formatTokenAmount = (val: string | number) => {
+  if (!val) return '0'
+  const num = typeof val === 'string' ? parseFloat(val) : val
+  // 使用 decimals 将最小单位转换为可读金额（默认为18）
+  const decimals = searchParams.value.decimals || 18
+  const readableAmount = num / Math.pow(10, decimals)
+  return readableAmount.toFixed(6)
 }
 
 const refreshInterval = ref<number>(60)
@@ -235,16 +306,67 @@ const fetchData = async () => {
       if (!params[key]) delete params[key]
     })
     // 处理最小Token数量
-    if (params.min_token_amount) {
+    if (params.min_token_amount && params.decimals !== undefined) {
       // 只做一次转换，避免重复点击导致指数增长
       if (!/e\+?\d+$/i.test(String(params.min_token_amount))) {
-        params.min_token_amount = (BigInt(params.min_token_amount) * 1000000000000000000n).toString()
+        const decimals = parseInt(params.decimals)
+        if (!isNaN(decimals)) {
+          params.min_token_amount = (BigInt(params.min_token_amount) * BigInt(Math.pow(10, decimals))).toString()
+        }
       }
     }
     const res = await getTransactions(params)
-    transactions.value = res.data?.transactions || []
-  } catch (e) {
-    Message.error('查询失败')
+    console.log('完整响应:', res) // 调试日志
+
+    // 多种数据结构适配（注意：res 是 axios 响应，实际数据在 res.data 中）
+    let transactionsList = []
+    if (res?.data?.transactions) {
+      // 结构1: axios包装后: { data: { transactions: [...] } }
+      transactionsList = res.data.transactions
+    } else if (Array.isArray(res?.data)) {
+      // 结构2: { data: [...] } - 直接数组 (这是当前API返回的格式)
+      transactionsList = res.data
+    } else if (res?.data && typeof res?.data === 'object') {
+      // 结构3: { data: { ... } } - 对象，可能有其他字段
+      // 尝试常见的数组字段名
+      if (Array.isArray((res as any).data?.list)) transactionsList = (res as any).data.list
+      else if (Array.isArray((res as any).data?.items)) transactionsList = (res as any).data.items
+      else if (Array.isArray((res as any).data?.rows)) transactionsList = (res as any).data.rows
+      else if (Array.isArray((res as any).data?.results)) transactionsList = (res as any).data.results
+      else if (Array.isArray((res as any).data?.data)) transactionsList = (res as any).data.data
+      else transactionsList = []
+    } else {
+      transactionsList = []
+    }
+
+    console.log('原始交易列表长度:', transactionsList.length)
+    console.log('原始交易列表前2条:', JSON.stringify(transactionsList.slice(0, 2), null, 2)) // 详细打印原始数据
+
+    // 字段映射：将 API 返回的字段名转换为前端期望的字段名
+    transactionsList = transactionsList.map((item: any, index: number) => {
+      // 兼容不同大小写的字段名
+      const mappedItem = {
+        tx_hash: item.TxHash || item.tx_hash || item.TxHashHex || item.hash || '',
+        from_address: item.FromAddress || item.from_address || item.from || '',
+        to_address: item.ToAddress || item.to_address || item.to || '',
+        block_number: item.BlockNumber || item.block_number || item.blockNumber || 0,
+        timestamp: item.Timestamp || item.timestamp || item.CreatedAt || item.createdAt || '',
+        token_amount: item.TokenAmount || item.token_amount || item.Value || item.value || '0',
+      }
+      if (index < 2) {
+        console.log(`第${index + 1}条映射结果:`, JSON.stringify(mappedItem, null, 2))
+      }
+      return mappedItem
+    })
+
+    console.log('映射后的交易列表前2条:', JSON.stringify(transactionsList.slice(0, 2), null, 2)) // 只打印前2条用于调试
+
+    transactions.value = transactionsList
+    console.log('设置的交易列表:', transactionsList) // 调试日志
+  } catch (e: any) {
+    console.error('查询失败:', e) // 详细错误日志
+    const errorMsg = e?.response?.data?.message || e?.message || '未知错误'
+    Message.error('查询失败: ' + errorMsg)
   }
 }
 
@@ -258,77 +380,22 @@ const rowSelection = {
   onlyCurrent: false,
 }
 
-// 批量复制接收者
-const batchCopyTokenContracts = async () => {
+// 批量复制To地址
+const batchCopyToAddresses = async () => {
   if (!selectedRowKeys.value.length) {
-    Message.warning('请先选择要复制的接收者')
+    Message.warning('请先选择要复制的To地址')
     return
   }
-  const contracts = transactions.value
+  const toAddresses = transactions.value
     .filter(item => selectedRowKeys.value.includes(item.tx_hash))
-    .map(item => item.token_contract)
+    .map(item => item.to_address)
     .filter(Boolean)
     .join('\n')
-  if (!contracts) {
-    Message.warning('没有可复制的接收者')
+  if (!toAddresses) {
+    Message.warning('没有可复制的To地址')
     return
   }
-  copyToClipboard(contracts, '已复制所选接收者', '复制失败')
-}
-
-// 添加接收者到黑名单
-const addToBlacklist = async (record: any) => {
-  if (!record.token_contract) {
-    Message.error('接收者地址不能为空')
-    return
-  }
-  try {
-    await addReceiverBlacklist({
-      to_address: record.token_contract,
-      data_source: 'query',
-      tag: 'token_transaction'
-    })
-    Message.success('已添加到黑名单')
-    // 从当前列表中移除包含该接收者地址的交易记录
-    transactions.value = transactions.value.filter(item => item.token_contract !== record.token_contract)
-  } catch (e) {
-    Message.error('添加到黑名单失败')
-  }
-}
-
-// 批量添加接收者到黑名单
-const batchAddToBlacklist = async () => {
-  if (!selectedRowKeys.value.length) {
-    Message.warning('请先选择要添加到黑名单的接收者')
-    return
-  }
-  
-  const selectedReceivers = transactions.value
-    .filter(item => selectedRowKeys.value.includes(item.tx_hash))
-    .map(item => item.token_contract)
-    .filter(Boolean) // 过滤掉空地址
-  
-  if (!selectedReceivers.length) {
-    Message.warning('没有可添加到黑名单的接收者')
-    return
-  }
-  
-  try {
-    // 逐个添加到黑名单
-    for (const address of selectedReceivers) {
-      await addReceiverBlacklist({
-        to_address: address,
-        data_source: 'query',
-        tag: 'token_batch_add'
-      })
-    }
-    Message.success(`成功添加 ${selectedReceivers.length} 个接收者到黑名单`)
-    selectedRowKeys.value = [] // 清空选择
-    // 从当前列表中移除包含这些接收者地址的交易记录
-    transactions.value = transactions.value.filter(item => !selectedReceivers.includes(item.token_contract))
-  } catch (e) {
-    Message.error('批量添加到黑名单失败')
-  }
+  copyToClipboard(toAddresses, '已复制所选To地址', '复制失败')
 }
 
 // 地址标签管理相关

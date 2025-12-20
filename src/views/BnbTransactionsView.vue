@@ -19,6 +19,9 @@
       <a-form-item label="最大BNB数量">
         <a-input v-model="searchParams.max_value" placeholder="最大数量(BNB)" style="width: 200px;" />
       </a-form-item>
+      <a-form-item label="decimals">
+        <a-input-number v-model="searchParams.decimals" :min="0" :max="36" placeholder="精度" style="width: 100px;" />
+      </a-form-item>
       <a-form-item label="显示条数">
         <a-input-number v-model="searchParams.limit" :min="1" placeholder="显示条数" style="width: 120px;" />
       </a-form-item>
@@ -162,21 +165,100 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconDelete, IconTag, IconInfoCircle } from '@arco-design/web-vue/es/icon'
 import { getBnbTransactions, addReceiverBlacklist, deleteReceiverBlacklist, batchDeleteReceiverBlacklist, getAddressTags, addAddressTag, deleteAddressTag, getUniqueAddressTags, batchAddAddressTags } from '@/api/monitor.ts'
 import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from 'dayjs'
 
+const route = useRoute()
+const router = useRouter()
+
 const searchParams = ref<Record<string, any>>({
   from_addresses: '',
   to_addresses: '',
   min_value: '',
   max_value: '',
+  decimals: 18,
   limit: 1000,
   min_block_num: null,
   max_block_num: null,
+})
+
+// 从 URL 参数初始化 searchParams
+const initializeFromUrl = () => {
+  const query = route.query
+  if (query.from_addresses) searchParams.value.from_addresses = String(query.from_addresses)
+  if (query.to_addresses) searchParams.value.to_addresses = String(query.to_addresses)
+  if (query.min_value) searchParams.value.min_value = String(query.min_value)
+  if (query.max_value) searchParams.value.max_value = String(query.max_value)
+  if (query.decimals) searchParams.value.decimals = parseInt(String(query.decimals)) || 18
+  if (query.limit) searchParams.value.limit = parseInt(String(query.limit)) || 1000
+  if (query.min_block_num) searchParams.value.min_block_num = parseInt(String(query.min_block_num))
+  if (query.max_block_num) searchParams.value.max_block_num = parseInt(String(query.max_block_num))
+}
+
+// 监听 searchParams 变化，更新 URL（避免无限循环）
+let isUpdatingFromUrl = false
+watch(searchParams, (newValue) => {
+  if (isUpdatingFromUrl) return
+
+  // 构建查询参数对象，只包含非空值
+  const query: Record<string, any> = {}
+  if (newValue.from_addresses) query.from_addresses = newValue.from_addresses
+  if (newValue.to_addresses) query.to_addresses = newValue.to_addresses
+  if (newValue.min_value) query.min_value = newValue.min_value
+  if (newValue.max_value) query.max_value = newValue.max_value
+  if (newValue.decimals !== null && newValue.decimals !== undefined) query.decimals = newValue.decimals
+  if (newValue.limit) query.limit = newValue.limit
+  if (newValue.min_block_num !== null && newValue.min_block_num !== undefined) query.min_block_num = newValue.min_block_num
+  if (newValue.max_block_num !== null && newValue.max_block_num !== undefined) query.max_block_num = newValue.max_block_num
+
+  // 更新 URL，不触发导航
+  router.replace({ query }).catch(() => {})
+}, { deep: true })
+
+// 监听路由变化，更新 searchParams
+watch(() => route.query, (newQuery) => {
+  isUpdatingFromUrl = true
+  if (newQuery.from_addresses) searchParams.value.from_addresses = String(newQuery.from_addresses)
+  else searchParams.value.from_addresses = ''
+
+  if (newQuery.to_addresses) searchParams.value.to_addresses = String(newQuery.to_addresses)
+  else searchParams.value.to_addresses = ''
+
+  if (newQuery.min_value) searchParams.value.min_value = String(newQuery.min_value)
+  else searchParams.value.min_value = ''
+
+  if (newQuery.max_value) searchParams.value.max_value = String(newQuery.max_value)
+  else searchParams.value.max_value = ''
+
+  if (newQuery.decimals) searchParams.value.decimals = parseInt(String(newQuery.decimals)) || 18
+  else searchParams.value.decimals = 18
+
+  if (newQuery.limit) searchParams.value.limit = parseInt(String(newQuery.limit)) || 1000
+  else searchParams.value.limit = 1000
+
+  if (newQuery.min_block_num) searchParams.value.min_block_num = parseInt(String(newQuery.min_block_num))
+  else searchParams.value.min_block_num = null
+
+  if (newQuery.max_block_num) searchParams.value.max_block_num = parseInt(String(newQuery.max_block_num))
+  else searchParams.value.max_block_num = null
+
+  isUpdatingFromUrl = false
+}, { deep: true })
+
+// 组件挂载后初始化
+onMounted(() => {
+  // 组件加载时初始化参数
+  initializeFromUrl()
+
+  // 如果 URL 中有查询参数，自动获取数据
+  if (Object.keys(route.query).length > 0) {
+    fetchData()
+  }
 })
 
 const transactions = ref<any[]>([])
@@ -203,9 +285,10 @@ const formatTime = (val: string) => {
 const formatBnbValue = (val: string | number) => {
   if (!val) return '0'
   const num = typeof val === 'string' ? parseFloat(val) : val
-  // 将wei转换为BNB（1 BNB = 10^18 wei）
-  const bnbValue = num / Math.pow(10, 18)
-  return bnbValue.toFixed(6)
+  // 使用 decimals 将最小单位转换为可读金额（默认为18，即BNB的精度）
+  const decimals = searchParams.value.decimals || 18
+  const readableValue = num / Math.pow(10, decimals)
+  return readableValue.toFixed(6)
 }
 
 const refreshInterval = ref<number>(60)
@@ -241,19 +324,46 @@ const fetchData = async () => {
     Object.keys(params).forEach(key => {
       if (!params[key]) delete params[key]
     })
-    
+
     // 处理BNB数量转换为wei
-    if (params.min_value) {
-      params.min_value = (parseFloat(params.min_value) * Math.pow(10, 18)).toString()
+    if (params.min_value && params.decimals !== undefined) {
+      const minValueNum = parseFloat(params.min_value)
+      const decimals = parseInt(params.decimals)
+      if (!isNaN(minValueNum) && !isNaN(decimals)) {
+        params.min_value = (minValueNum * Math.pow(10, decimals)).toString()
+      }
     }
-    if (params.max_value) {
-      params.max_value = (parseFloat(params.max_value) * Math.pow(10, 18)).toString()
+    if (params.max_value && params.decimals !== undefined) {
+      const maxValueNum = parseFloat(params.max_value)
+      const decimals = parseInt(params.decimals)
+      if (!isNaN(maxValueNum) && !isNaN(decimals)) {
+        params.max_value = (maxValueNum * Math.pow(10, decimals)).toString()
+      }
     }
-    
+
     const res = await getBnbTransactions(params)
-    transactions.value = res.data?.transactions || []
+    // 使用通用响应处理函数
+    const { parseApiResponse, getErrorMessage } = await import('@/utils/responseHandler.ts')
+    const transactionsList = parseApiResponse(res, 'transactions')
+    // 字段映射：将大写字段名转换为下划线格式
+    transactions.value = transactionsList.map((item: any) => ({
+      tx_hash: item.TxHash,
+      from_address: item.FromAddress,
+      to_address: item.ToAddress,
+      value: item.Value,
+      input_data: item.InputData,
+      tx_type: item.TxType,
+      block_number: item.BlockNumber,
+      timestamp: item.Timestamp,
+      status: item.Status,
+      created_at: item.CreatedAt,
+      token_contract: item.TokenContract,
+      token_amount: item.TokenAmount,
+    }))
   } catch (e) {
-    Message.error('查询失败')
+    const { getErrorMessage } = await import('@/utils/responseHandler.ts')
+    console.error('查询失败:', e)
+    Message.error('查询失败: ' + getErrorMessage(e))
   }
 }
 

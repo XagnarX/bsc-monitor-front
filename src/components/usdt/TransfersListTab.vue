@@ -13,6 +13,9 @@
       <a-form-item label="最大金额">
         <a-input-number v-model="searchParams.maxAmount" placeholder="最大金额" style="width: 120px;" />
       </a-form-item>
+      <a-form-item label="decimals">
+        <a-input-number v-model="searchParams.decimals" :min="0" :max="36" placeholder="精度" style="width: 100px;" />
+      </a-form-item>
       <a-form-item label="起始区块号">
         <a-input-number v-model="searchParams.startBlock" placeholder="起始区块号" style="width: 150px;" />
       </a-form-item>
@@ -107,7 +110,7 @@
         </a-space>
       </template>
       <template #amount="{ record }">
-        <a-tag :color="getAmountColor(record.amount)" size="medium">{{ record.amount }} USDT</a-tag>
+        <a-tag :color="getAmountColor(record.amount)" size="medium">{{ formatAmount(record.amount) }} USDT</a-tag>
       </template>
       <template #timestamp="{ record }">
         <span>{{ formatTime(record.timestamp) }}</span>
@@ -182,12 +185,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconFilter } from '@arco-design/web-vue/es/icon'
 import { getUsdtReceipts, getUsdtTargets } from '@/api/monitor.ts'
 import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from 'dayjs'
+
+const route = useRoute()
+const router = useRouter()
 
 // Props
 const props = defineProps<{
@@ -205,6 +212,7 @@ const searchParams = ref<{
   fromAddress: string
   minAmount: number | undefined
   maxAmount: number | undefined
+  decimals: number
   startBlock: number | undefined
   endBlock: number | undefined
   page: number
@@ -216,6 +224,7 @@ const searchParams = ref<{
   fromAddress: '',
   minAmount: undefined,
   maxAmount: undefined,
+  decimals: 18,
   startBlock: undefined,
   endBlock: undefined,
   page: 1,
@@ -224,6 +233,84 @@ const searchParams = ref<{
   order: 'desc',
 })
 
+// 从 URL 参数初始化 searchParams
+const initializeFromUrl = () => {
+  const query = route.query
+  if (query.address) searchParams.value.address = String(query.address)
+  if (query.fromAddress) searchParams.value.fromAddress = String(query.fromAddress)
+  if (query.minAmount) searchParams.value.minAmount = parseFloat(String(query.minAmount))
+  if (query.maxAmount) searchParams.value.maxAmount = parseFloat(String(query.maxAmount))
+  if (query.decimals) searchParams.value.decimals = parseInt(String(query.decimals)) || 18
+  if (query.startBlock) searchParams.value.startBlock = parseInt(String(query.startBlock))
+  if (query.endBlock) searchParams.value.endBlock = parseInt(String(query.endBlock))
+  if (query.page) searchParams.value.page = parseInt(String(query.page)) || 1
+  if (query.limit) searchParams.value.limit = parseInt(String(query.limit)) || 20
+  if (query.sortBy) searchParams.value.sortBy = String(query.sortBy)
+  if (query.order) searchParams.value.order = String(query.order)
+}
+
+// 监听 searchParams 变化，更新 URL（避免无限循环）
+let isUpdatingFromUrl = false
+watch(searchParams, (newValue) => {
+  if (isUpdatingFromUrl) return
+
+  // 构建查询参数对象，只包含非空值
+  const query: Record<string, any> = {}
+  if (newValue.address) query.address = newValue.address
+  if (newValue.fromAddress) query.fromAddress = newValue.fromAddress
+  if (newValue.minAmount !== undefined) query.minAmount = newValue.minAmount
+  if (newValue.maxAmount !== undefined) query.maxAmount = newValue.maxAmount
+  if (newValue.decimals !== undefined) query.decimals = newValue.decimals
+  if (newValue.startBlock !== undefined) query.startBlock = newValue.startBlock
+  if (newValue.endBlock !== undefined) query.endBlock = newValue.endBlock
+  if (newValue.page) query.page = newValue.page
+  if (newValue.limit) query.limit = newValue.limit
+  if (newValue.sortBy) query.sortBy = newValue.sortBy
+  if (newValue.order) query.order = newValue.order
+
+  // 更新 URL，不触发导航
+  router.replace({ query }).catch(() => {})
+}, { deep: true })
+
+// 监听路由变化，更新 searchParams
+watch(() => route.query, (newQuery) => {
+  isUpdatingFromUrl = true
+  if (newQuery.address) searchParams.value.address = String(newQuery.address)
+  else searchParams.value.address = ''
+
+  if (newQuery.fromAddress) searchParams.value.fromAddress = String(newQuery.fromAddress)
+  else searchParams.value.fromAddress = ''
+
+  if (newQuery.minAmount) searchParams.value.minAmount = parseFloat(String(newQuery.minAmount))
+  else searchParams.value.minAmount = undefined
+
+  if (newQuery.maxAmount) searchParams.value.maxAmount = parseFloat(String(newQuery.maxAmount))
+  else searchParams.value.maxAmount = undefined
+
+  if (newQuery.decimals) searchParams.value.decimals = parseInt(String(newQuery.decimals)) || 18
+  else searchParams.value.decimals = 18
+
+  if (newQuery.startBlock) searchParams.value.startBlock = parseInt(String(newQuery.startBlock))
+  else searchParams.value.startBlock = undefined
+
+  if (newQuery.endBlock) searchParams.value.endBlock = parseInt(String(newQuery.endBlock))
+  else searchParams.value.endBlock = undefined
+
+  if (newQuery.page) searchParams.value.page = parseInt(String(newQuery.page)) || 1
+  else searchParams.value.page = 1
+
+  if (newQuery.limit) searchParams.value.limit = parseInt(String(newQuery.limit)) || 20
+  else searchParams.value.limit = 20
+
+  if (newQuery.sortBy) searchParams.value.sortBy = String(newQuery.sortBy)
+  else searchParams.value.sortBy = 'timestamp'
+
+  if (newQuery.order) searchParams.value.order = String(newQuery.order)
+  else searchParams.value.order = 'desc'
+
+  isUpdatingFromUrl = false
+}, { deep: true })
+
 // Watch fromAddress prop
 watch(() => props.fromAddress, (newVal) => {
   if (newVal) {
@@ -231,6 +318,17 @@ watch(() => props.fromAddress, (newVal) => {
     fetchData()
   }
 }, { immediate: true })
+
+// 组件挂载后初始化
+onMounted(() => {
+  // 组件加载时初始化参数
+  initializeFromUrl()
+
+  // 如果 URL 中有查询参数，自动获取数据
+  if (Object.keys(route.query).length > 0) {
+    fetchData()
+  }
+})
 
 // USDT receipts data
 const receipts = ref<any[]>([])
@@ -290,7 +388,15 @@ const formatTime = (val: string) => {
   return dayjs(val).format('YYYY-MM-DD HH:mm:ss')
 }
 
+const formatAmount = (val: string | number) => {
+  if (!val) return '0'
+  const num = typeof val === 'string' ? parseFloat(val) : val
+  // 后端返回的amount已经是可读格式，直接返回并保留6位小数
+  return num.toFixed(6)
+}
+
 const getAmountColor = (amount: string) => {
+  // amount已经是可读格式，直接使用
   const num = parseFloat(amount)
   if (num >= 10000) return 'red'
   if (num >= 5000) return 'orange'
@@ -302,29 +408,96 @@ const getAmountColor = (amount: string) => {
 const fetchData = async () => {
   try {
     const params = { ...searchParams.value }
+
+    // 处理最小和最大金额转换为最小单位
+    if (params.minAmount !== undefined) {
+      params.minAmount = params.minAmount * Math.pow(10, params.decimals || 18)
+    }
+    if (params.maxAmount !== undefined) {
+      params.maxAmount = params.maxAmount * Math.pow(10, params.decimals || 18)
+    }
+
+    // 删除空值参数
     Object.keys(params).forEach(key => {
       if (!params[key as keyof typeof params]) {
         delete params[key as keyof typeof params]
       }
     })
 
+    console.log('请求参数:', params) // 调试日志
+
     const res: any = await getUsdtReceipts(params)
-    if (res && res.code === 200) {
-      receipts.value = res.data.data || []
-      summary.value = res.data.summary || { count: 0, total_amount: '0.00', avg_amount: '0.00' }
-      pagination.value = {
-        total: res.data.total,
-        page: res.data.page,
-        limit: res.data.limit,
-      }
-      Message.success(`成功查询到 ${res.data.total} 条记录`)
-    } else {
-      Message.error(res?.message || '查询失败')
-      receipts.value = []
+    console.log('完整响应:', res) // 调试日志
+
+    // 使用通用响应处理函数
+    const { parseApiResponse, getErrorMessage } = await import('@/utils/responseHandler.ts')
+
+    // USDT 收据数据的字段名是 'receipts'
+    let receiptsList = parseApiResponse(res, 'receipts')
+
+    // 如果没有找到 receipts 字段，尝试其他常见字段名
+    if (receiptsList.length === 0) {
+      receiptsList = parseApiResponse(res, 'data')
     }
-  } catch (e) {
-    console.error('Query failed:', e)
-    Message.error('查询失败，请检查网络连接')
+    if (receiptsList.length === 0) {
+      receiptsList = parseApiResponse(res, 'list')
+    }
+
+    receipts.value = receiptsList
+    console.log('设置的收据列表:', receiptsList) // 调试日志
+
+    // 处理汇总信息（前端计算）
+    let summaryData = { count: 0, total_amount: '0.00', avg_amount: '0.00' }
+    if (receiptsList.length > 0) {
+      // 计算总金额和平均金额（amount已经是可读格式）
+      const totalAmount = receiptsList.reduce((sum, item) => {
+        const amount = parseFloat(item.amount) || 0
+        return sum + amount
+      }, 0)
+      const avgAmount = totalAmount / receiptsList.length
+
+      summaryData = {
+        count: receiptsList.length,
+        total_amount: totalAmount.toFixed(6),
+        avg_amount: avgAmount.toFixed(6),
+      }
+    }
+
+    // 如果后端返回了summary字段，优先使用后端的
+    if (res?.data?.summary && typeof res.data.summary === 'object') {
+      summaryData = res.data.summary
+    }
+
+    // 处理分页信息
+    let paginationData = { total: receiptsList.length, page: 1, limit: 20 }
+    if (res?.data && typeof res.data === 'object') {
+      if (res.data.total !== undefined) paginationData.total = res.data.total
+      if (res.data.page !== undefined) paginationData.page = res.data.page
+      if (res.data.limit !== undefined) paginationData.limit = res.data.limit
+    }
+
+    summary.value = summaryData
+    pagination.value = paginationData
+
+    // 调试日志
+    console.log('📊 [调试] 数据概览:', {
+      count: summaryData.count,
+      total_amount: summaryData.total_amount,
+      avg_amount: summaryData.avg_amount,
+      pagination: paginationData
+    })
+
+    if (receiptsList.length > 0) {
+      Message.success(`成功查询到 ${paginationData.total} 条记录`)
+    } else {
+      Message.warning('未查询到数据')
+    }
+
+  } catch (e: any) {
+    console.error('查询失败:', e)
+    const errorMsg = e?.response?.data?.message || e?.message || '未知错误'
+    Message.error('查询失败: ' + errorMsg)
+    receipts.value = []
   }
 }
 
@@ -335,6 +508,7 @@ const resetFilters = () => {
     fromAddress: '',
     minAmount: undefined,
     maxAmount: undefined,
+    decimals: 18,
     startBlock: undefined,
     endBlock: undefined,
     page: 1,

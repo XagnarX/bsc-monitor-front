@@ -95,6 +95,12 @@ const menuData = ref<MenuItem[]>([
     path: '/usdt-transfers',
   },
   {
+    key: 'token-filter-analysis',
+    title: 'Token筛选分析',
+    icon: markRaw(IconComputer),
+    path: '/token-filter-analysis',
+  },
+  {
     key: 'token-management',
     title: 'ERC-20代币管理',
     icon: markRaw(IconComputer),

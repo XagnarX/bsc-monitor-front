@@ -574,27 +574,54 @@ const fetchSenderGroups = async () => {
     if (groupFilters.value.minTotalAmount) params.minTotalAmount = groupFilters.value.minTotalAmount
     if (groupFilters.value.maxTotalAmount) params.maxTotalAmount = groupFilters.value.maxTotalAmount
 
+    console.log('请求参数:', params) // 调试日志
+
     const res: any = await getUsdtSenderGroupStats(params)
+    console.log('完整响应:', res) // 调试日志
 
-    if (res && res.code === 200) {
-      senderGroups.value = res.data.data || []
-      pagination.value = {
-        total: res.data.total,
-        page: res.data.page,
-        limit: res.data.limit,
-      }
+    // 使用通用响应处理函数
+    const { parseApiResponse, getErrorMessage } = await import('@/utils/responseHandler.ts')
 
-      // Save applied filters from backend response
-      appliedFilters.value = res.data.filters || {}
-
-      Message.success(`成功查询到 ${res.data.total} 个发送者`)
-    } else {
-      Message.error(res?.message || '查询失败')
-      senderGroups.value = []
+    // 发送者组数据的字段名可能是 'groups' 或 'data'
+    let senderGroupsList = parseApiResponse(res, 'groups')
+    if (senderGroupsList.length === 0) {
+      senderGroupsList = parseApiResponse(res, 'data')
     }
-  } catch (e) {
-    console.error('Query failed:', e)
-    Message.error('查询失败，请检查网络连接')
+    if (senderGroupsList.length === 0) {
+      senderGroupsList = parseApiResponse(res, 'list')
+    }
+
+    senderGroups.value = senderGroupsList
+    console.log('设置的发送者组列表:', senderGroupsList) // 调试日志
+
+    // 处理分页信息
+    let paginationData = { total: senderGroupsList.length, page: 1, limit: 20 }
+    if (res?.data && typeof res.data === 'object') {
+      if (res.data.total !== undefined) paginationData.total = res.data.total
+      if (res.data.page !== undefined) paginationData.page = res.data.page
+      if (res.data.limit !== undefined) paginationData.limit = res.data.limit
+    }
+
+    // 保存应用的过滤器
+    let appliedFiltersData = {}
+    if (res?.data?.filters && typeof res.data.filters === 'object') {
+      appliedFiltersData = res.data.filters
+    }
+
+    pagination.value = paginationData
+    appliedFilters.value = appliedFiltersData
+
+    if (senderGroupsList.length > 0) {
+      Message.success(`成功查询到 ${paginationData.total} 个发送者`)
+    } else {
+      Message.warning('未查询到数据')
+    }
+
+  } catch (e: any) {
+    console.error('查询失败:', e)
+    const errorMsg = e?.response?.data?.message || e?.message || '未知错误'
+    Message.error('查询失败: ' + errorMsg)
+    senderGroups.value = []
   } finally {
     loading.value = false
   }

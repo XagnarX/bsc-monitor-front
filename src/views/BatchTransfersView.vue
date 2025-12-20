@@ -28,6 +28,9 @@
       <a-form-item label="最大金额">
         <a-input v-model="searchParams.max_amount" placeholder="最大金额(支持小数)" style="width: 200px;" />
       </a-form-item>
+      <a-form-item label="decimals">
+        <a-input-number v-model="searchParams.decimals" :min="0" :max="36" placeholder="精度" style="width: 100px;" />
+      </a-form-item>
       <a-form-item label="最小区块号">
         <a-input-number v-model="searchParams.min_block_num" placeholder="请输入最小区块号" style="width: 200px;" />
       </a-form-item>
@@ -167,11 +170,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconTag, IconDelete } from '@arco-design/web-vue/es/icon'
 import { queryBatchTransfers, addReceiverBlacklist, addAddressTag, getBatchTransfersStats } from '@/api/monitor'
 import { copyToClipboard } from '@/utils/clipboard'
+
+const route = useRoute()
+const router = useRouter()
 
 interface BatchTransferRecord {
   id: number
@@ -248,10 +255,101 @@ const searchParams = reactive({
   function_names: '',
   min_amount: '',
   max_amount: '',
+  decimals: 18,
   min_block_num: undefined as number | undefined,
   max_block_num: undefined as number | undefined,
   limit: 100
 })
+
+// 从 URL 参数初始化 searchParams
+const initializeFromUrl = () => {
+  const query = route.query
+  if (query.tx_hashes) searchParams.tx_hashes = String(query.tx_hashes)
+  if (query.from_addresses) searchParams.from_addresses = String(query.from_addresses)
+  if (query.to_addresses) searchParams.to_addresses = String(query.to_addresses)
+  if (query.token_contracts) searchParams.token_contracts = String(query.token_contracts)
+  if (query.token_types) {
+    const types = String(query.token_types)
+    searchParams.token_types = types ? types.split(',') : []
+  }
+  if (query.function_names) searchParams.function_names = String(query.function_names)
+  if (query.min_amount) searchParams.min_amount = String(query.min_amount)
+  if (query.max_amount) searchParams.max_amount = String(query.max_amount)
+  if (query.decimals) searchParams.decimals = parseInt(String(query.decimals)) || 18
+  if (query.min_block_num) searchParams.min_block_num = parseInt(String(query.min_block_num))
+  if (query.max_block_num) searchParams.max_block_num = parseInt(String(query.max_block_num))
+  if (query.limit) searchParams.limit = parseInt(String(query.limit)) || 100
+}
+
+// 监听 searchParams 变化，更新 URL（避免无限循环）
+let isUpdatingFromUrl = false
+watch(searchParams, (newValue) => {
+  if (isUpdatingFromUrl) return
+
+  // 构建查询参数对象，只包含非空值
+  const query: Record<string, any> = {}
+  if (newValue.tx_hashes) query.tx_hashes = newValue.tx_hashes
+  if (newValue.from_addresses) query.from_addresses = newValue.from_addresses
+  if (newValue.to_addresses) query.to_addresses = newValue.to_addresses
+  if (newValue.token_contracts) query.token_contracts = newValue.token_contracts
+  if (newValue.token_types && newValue.token_types.length > 0) query.token_types = newValue.token_types.join(',')
+  if (newValue.function_names) query.function_names = newValue.function_names
+  if (newValue.min_amount) query.min_amount = newValue.min_amount
+  if (newValue.max_amount) query.max_amount = newValue.max_amount
+  if (newValue.decimals !== null && newValue.decimals !== undefined) query.decimals = newValue.decimals
+  if (newValue.min_block_num !== null && newValue.min_block_num !== undefined) query.min_block_num = newValue.min_block_num
+  if (newValue.max_block_num !== null && newValue.max_block_num !== undefined) query.max_block_num = newValue.max_block_num
+  if (newValue.limit) query.limit = newValue.limit
+
+  // 更新 URL，不触发导航
+  router.replace({ query }).catch(() => {})
+}, { deep: true })
+
+// 监听路由变化，更新 searchParams
+watch(() => route.query, (newQuery) => {
+  isUpdatingFromUrl = true
+  if (newQuery.tx_hashes) searchParams.tx_hashes = String(newQuery.tx_hashes)
+  else searchParams.tx_hashes = ''
+
+  if (newQuery.from_addresses) searchParams.from_addresses = String(newQuery.from_addresses)
+  else searchParams.from_addresses = ''
+
+  if (newQuery.to_addresses) searchParams.to_addresses = String(newQuery.to_addresses)
+  else searchParams.to_addresses = ''
+
+  if (newQuery.token_contracts) searchParams.token_contracts = String(newQuery.token_contracts)
+  else searchParams.token_contracts = ''
+
+  if (newQuery.token_types) {
+    const types = String(newQuery.token_types)
+    searchParams.token_types = types ? types.split(',') : []
+  } else {
+    searchParams.token_types = []
+  }
+
+  if (newQuery.function_names) searchParams.function_names = String(newQuery.function_names)
+  else searchParams.function_names = ''
+
+  if (newQuery.min_amount) searchParams.min_amount = String(newQuery.min_amount)
+  else searchParams.min_amount = ''
+
+  if (newQuery.max_amount) searchParams.max_amount = String(newQuery.max_amount)
+  else searchParams.max_amount = ''
+
+  if (newQuery.decimals) searchParams.decimals = parseInt(String(newQuery.decimals)) || 18
+  else searchParams.decimals = 18
+
+  if (newQuery.min_block_num) searchParams.min_block_num = parseInt(String(newQuery.min_block_num))
+  else searchParams.min_block_num = undefined
+
+  if (newQuery.max_block_num) searchParams.max_block_num = parseInt(String(newQuery.max_block_num))
+  else searchParams.max_block_num = undefined
+
+  if (newQuery.limit) searchParams.limit = parseInt(String(newQuery.limit)) || 100
+  else searchParams.limit = 100
+
+  isUpdatingFromUrl = false
+}, { deep: true })
 
 const columns = [
   {
@@ -321,20 +419,20 @@ const rowSelection = {
   onlyCurrent: false
 }
 
-const convertAmountToWei = (amount: string): string => {
+const convertAmountToWei = (amount: string, decimals: number = 18): string => {
   if (!amount) return ''
-  
+
   // 移除空格
   const cleanAmount = amount.trim()
-  
+
   // 尝试解析为数字
   const numericAmount = parseFloat(cleanAmount)
   if (!isNaN(numericAmount)) {
-    // 所有数字输入都乘以 10^18
-    const weiAmount = BigInt(Math.floor(numericAmount * Math.pow(10, 18)))
+    // 使用 decimals 作为精度
+    const weiAmount = BigInt(Math.floor(numericAmount * Math.pow(10, decimals)))
     return weiAmount.toString()
   }
-  
+
   // 如果无法解析为数字，返回原值
   return cleanAmount
 }
@@ -346,21 +444,21 @@ const fetchData = async () => {
     if (params.token_types.length === 0) {
       delete (params as any).token_types
     }
-    
+
     // 转换金额格式
     if (params.min_amount) {
-      params.min_amount = convertAmountToWei(params.min_amount)
+      params.min_amount = convertAmountToWei(params.min_amount, params.decimals || 18)
     }
     if (params.max_amount) {
-      params.max_amount = convertAmountToWei(params.max_amount)
+      params.max_amount = convertAmountToWei(params.max_amount, params.decimals || 18)
     }
-    
+
     const response = await queryBatchTransfers(params) as unknown as ApiResponse<BatchTransfersResponse>
     console.log('完整API响应:', response)
     console.log('response.data:', response.data)
     console.log('response.code:', response.code)
     console.log('response.data.records:', response.data.records)
-    
+
     if (response.code === 200) {
       console.log('查询成功，设置数据:', response.data.records)
       transfers.value = response.data.records || []
@@ -435,21 +533,17 @@ const formatTime = (timestamp: string) => {
 
 const formatAmount = (amount: string, tokenType: string) => {
   if (!amount) return '0'
-  
-  // 如果是ERC20代币，使用18位精度转换
-  if (tokenType === 'ERC20') {
+
+  // 使用 decimals 来确定精度（默认为18）
+  const decimals = searchParams.decimals || 18
+
+  // 如果是ERC20代币或NATIVE转账，都使用 decimals 精度转换
+  if (tokenType === 'ERC20' || tokenType === 'NATIVE') {
     const weiAmount = BigInt(amount)
-    const decimalAmount = Number(weiAmount) / Math.pow(10, 18)
+    const decimalAmount = Number(weiAmount) / Math.pow(10, decimals)
     return decimalAmount.toFixed(6)
   }
-  
-  // 如果是BNB转账，也使用18位精度转换
-  if (tokenType === 'NATIVE') {
-    const weiAmount = BigInt(amount)
-    const decimalAmount = Number(weiAmount) / Math.pow(10, 18)
-    return decimalAmount.toFixed(6)
-  }
-  
+
   return amount
 }
 
@@ -602,6 +696,10 @@ const handleBatchTagSubmit = async () => {
 }
 
 onMounted(() => {
+  // 组件加载时初始化参数
+  initializeFromUrl()
+
+  // 自动获取数据
   fetchData()
 })
 

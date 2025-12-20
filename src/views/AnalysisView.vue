@@ -14,6 +14,9 @@
         a-col(:span="6")
           a-form-item(label="是否新地址" )
             a-select(v-model="searchParams.is_new_address" placeholder="请选择" :options="[{label:'是',value:true},{label: '否',value:false}]" allow-clear style="width:120px")
+        a-col(:span="6")
+          a-form-item(label="decimals")
+            a-input-number(v-model="searchParams.decimals" :min="0" :max="36" placeholder="精度" allow-clear style="width:120px")
       a-row(:gutter="16")
         a-col(:span="6")
           a-form-item(label="转账金额最小值" )
@@ -204,6 +207,7 @@ const searchParams = reactive<API.AnalysisQuery>({
   start_time: '',
   end_time: '',
   from_addresses: '',
+  decimals: 18,
 })
 const pagination = computed(() => {
   return {

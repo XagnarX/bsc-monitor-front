@@ -19,6 +19,12 @@
       <a-form-item label="最小转账金额">
         <a-input v-model="searchParams.min_amount" placeholder="最小金额(wei)" style="width: 200px;" />
       </a-form-item>
+      <a-form-item label="最大转账金额">
+        <a-input v-model="searchParams.max_amount" placeholder="最大金额(wei)" style="width: 200px;" />
+      </a-form-item>
+      <a-form-item label="decimals">
+        <a-input-number v-model="searchParams.decimals" :min="0" :max="36" placeholder="精度" style="width: 100px;" />
+      </a-form-item>
       <a-form-item label="显示条数">
         <a-input-number v-model="searchParams.limit" :min="1" placeholder="显示条数" style="width: 120px;" />
       </a-form-item>
@@ -183,21 +189,106 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { IconCopy, IconDelete, IconTag, IconInfoCircle } from '@arco-design/web-vue/es/icon'
 import { getErc20Events, addReceiverBlacklist, getAddressTags, addAddressTag, deleteAddressTag, getUniqueAddressTags, batchAddAddressTags } from '@/api/monitor.ts'
 import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from 'dayjs'
 
+const route = useRoute()
+const router = useRouter()
+
 const searchParams = ref<Record<string, any>>({
   contract_addresses: '',
   from_addresses: '',
   to_addresses: '',
   min_amount: '',
+  max_amount: '',
+  decimals: 18,
   limit: 1000,
   min_block_num: null,
   max_block_num: null,
+})
+
+// 从 URL 参数初始化 searchParams
+const initializeFromUrl = () => {
+  const query = route.query
+  if (query.contract_addresses) searchParams.value.contract_addresses = String(query.contract_addresses)
+  if (query.from_addresses) searchParams.value.from_addresses = String(query.from_addresses)
+  if (query.to_addresses) searchParams.value.to_addresses = String(query.to_addresses)
+  if (query.min_amount) searchParams.value.min_amount = String(query.min_amount)
+  if (query.max_amount) searchParams.value.max_amount = String(query.max_amount)
+  if (query.decimals) searchParams.value.decimals = parseInt(String(query.decimals)) || 18
+  if (query.limit) searchParams.value.limit = parseInt(String(query.limit)) || 1000
+  if (query.min_block_num) searchParams.value.min_block_num = parseInt(String(query.min_block_num))
+  if (query.max_block_num) searchParams.value.max_block_num = parseInt(String(query.max_block_num))
+}
+
+// 监听 searchParams 变化，更新 URL（避免无限循环）
+let isUpdatingFromUrl = false
+watch(searchParams, (newValue) => {
+  if (isUpdatingFromUrl) return
+
+  // 构建查询参数对象，只包含非空值
+  const query: Record<string, any> = {}
+  if (newValue.contract_addresses) query.contract_addresses = newValue.contract_addresses
+  if (newValue.from_addresses) query.from_addresses = newValue.from_addresses
+  if (newValue.to_addresses) query.to_addresses = newValue.to_addresses
+  if (newValue.min_amount) query.min_amount = newValue.min_amount
+  if (newValue.max_amount) query.max_amount = newValue.max_amount
+  if (newValue.decimals !== null && newValue.decimals !== undefined) query.decimals = newValue.decimals
+  if (newValue.limit) query.limit = newValue.limit
+  if (newValue.min_block_num !== null && newValue.min_block_num !== undefined) query.min_block_num = newValue.min_block_num
+  if (newValue.max_block_num !== null && newValue.max_block_num !== undefined) query.max_block_num = newValue.max_block_num
+
+  // 更新 URL，不触发导航
+  router.replace({ query }).catch(() => {})
+}, { deep: true })
+
+// 监听路由变化，更新 searchParams
+watch(() => route.query, (newQuery) => {
+  isUpdatingFromUrl = true
+  if (newQuery.contract_addresses) searchParams.value.contract_addresses = String(newQuery.contract_addresses)
+  else searchParams.value.contract_addresses = ''
+
+  if (newQuery.from_addresses) searchParams.value.from_addresses = String(newQuery.from_addresses)
+  else searchParams.value.from_addresses = ''
+
+  if (newQuery.to_addresses) searchParams.value.to_addresses = String(newQuery.to_addresses)
+  else searchParams.value.to_addresses = ''
+
+  if (newQuery.min_amount) searchParams.value.min_amount = String(newQuery.min_amount)
+  else searchParams.value.min_amount = ''
+
+  if (newQuery.max_amount) searchParams.value.max_amount = String(newQuery.max_amount)
+  else searchParams.value.max_amount = ''
+
+  if (newQuery.decimals) searchParams.value.decimals = parseInt(String(newQuery.decimals)) || 18
+  else searchParams.value.decimals = 18
+
+  if (newQuery.limit) searchParams.value.limit = parseInt(String(newQuery.limit)) || 1000
+  else searchParams.value.limit = 1000
+
+  if (newQuery.min_block_num) searchParams.value.min_block_num = parseInt(String(newQuery.min_block_num))
+  else searchParams.value.min_block_num = null
+
+  if (newQuery.max_block_num) searchParams.value.max_block_num = parseInt(String(newQuery.max_block_num))
+  else searchParams.value.max_block_num = null
+
+  isUpdatingFromUrl = false
+}, { deep: true })
+
+// 组件挂载后初始化
+onMounted(() => {
+  // 组件加载时初始化参数
+  initializeFromUrl()
+
+  // 如果 URL 中有查询参数，自动获取数据
+  if (Object.keys(route.query).length > 0) {
+    fetchData()
+  }
 })
 
 const events = ref<any[]>([])
@@ -255,11 +346,70 @@ const fetchData = async () => {
     Object.keys(params).forEach(key => {
       if (!params[key]) delete params[key]
     })
-    
+
+    // 如果有最小金额和decimals，将最小金额转换为最小单位发送给后端
+    if (params.min_amount && params.decimals !== undefined) {
+      const minAmountNum = parseFloat(params.min_amount)
+      const decimals = parseInt(params.decimals)
+      if (!isNaN(minAmountNum) && !isNaN(decimals)) {
+        params.min_amount = (minAmountNum * Math.pow(10, decimals)).toString()
+      }
+    }
+
+    // 如果有最大金额和decimals，将最大金额转换为最小单位发送给后端
+    if (params.max_amount && params.decimals !== undefined) {
+      const maxAmountNum = parseFloat(params.max_amount)
+      const decimals = parseInt(params.decimals)
+      if (!isNaN(maxAmountNum) && !isNaN(decimals)) {
+        params.max_amount = (maxAmountNum * Math.pow(10, decimals)).toString()
+      }
+    }
+
     const res = await getErc20Events(params)
-    events.value = res.data?.events || []
-  } catch (e) {
-    Message.error('查询失败')
+    console.log('完整响应:', res) // 调试日志
+
+    // 多种数据结构适配（注意：res 是 axios 响应，实际数据在 res.data 中）
+    let eventsList = []
+    if (res?.data?.events) {
+      // 结构1: axios包装后: { data: { events: [...] } }
+      eventsList = res.data.events
+    } else if (Array.isArray(res?.data)) {
+      // 结构2: { data: [...] } - 直接数组
+      eventsList = res.data
+    } else if (res?.data && typeof res?.data === 'object') {
+      // 结构3: { data: { ... } } - 对象，可能有其他字段
+      // 尝试常见的数组字段名
+      if (Array.isArray((res as any).data?.list)) eventsList = (res as any).data.list
+      else if (Array.isArray((res as any).data?.items)) eventsList = (res as any).data.items
+      else if (Array.isArray((res as any).data?.rows)) eventsList = (res as any).data.rows
+      else if (Array.isArray((res as any).data?.results)) eventsList = (res as any).data.results
+      else eventsList = []
+    } else {
+      eventsList = []
+    }
+
+    // 为每条记录添加唯一id（如果不存在）
+    eventsList = eventsList.map((item: any, index: number) => {
+      // 尝试多种可能作为唯一标识的字段
+      const uniqueId = item.id || item.EventId || item.TxHash || `${item.FromAddress}-${item.ToAddress}-${index}`
+      return {
+        ...item,
+        id: uniqueId
+      }
+    })
+
+    events.value = eventsList
+    // 清空选中状态，避免与新数据不匹配
+    selectedRowKeys.value = []
+    console.log('设置的事件列表:', eventsList) // 调试日志
+
+    if (eventsList.length === 0) {
+      console.log('未获取到数据') // 调试日志
+    }
+  } catch (e: any) {
+    console.error('查询失败:', e) // 详细错误日志
+    const errorMsg = e?.response?.data?.message || e?.message || '未知错误'
+    Message.error('查询失败: ' + errorMsg)
   }
 }
 
@@ -269,7 +419,7 @@ const selectedRowKeys = ref<string[]>([])
 const rowSelection = {
   type: 'checkbox',
   showCheckedAll: true,
-  onlyCurrent: false,
+  checkStrictly: false,
 }
 
 // 去重并批量复制To地址
