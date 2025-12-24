@@ -691,75 +691,8 @@ const fetchRowData = async (type: 'buy' | 'sell', index: number) => {
   }
 
   try {
-    // 构建聚合请求参数
-    const params: any = {
-      contractAddress: searchParams.value.contractAddress,
-      decimals: searchParams.value.decimals,
-      limit: searchParams.value.limit,
-    }
-
-    // 添加区块范围
-    if (searchParams.value.startBlock !== null && searchParams.value.startBlock !== undefined) {
-      const startBlockStr = String(searchParams.value.startBlock)
-      if (startBlockStr !== '') {
-        params.startBlock = Number(startBlockStr)
-      }
-    }
-    if (searchParams.value.endBlock !== null && searchParams.value.endBlock !== undefined) {
-      const endBlockStr = String(searchParams.value.endBlock)
-      if (endBlockStr !== '') {
-        params.endBlock = Number(endBlockStr)
-      }
-    }
-
-    // 添加金额过滤（转换为最小单位，发送字符串）
-    if (searchParams.value.minAmount !== null && searchParams.value.minAmount !== undefined) {
-      const minAmountStr = String(searchParams.value.minAmount)
-      if (minAmountStr !== '') {
-        const minAmountNum = Number(minAmountStr)
-        if (!isNaN(minAmountNum)) {
-          params.minAmount = String(minAmountNum * Math.pow(10, searchParams.value.decimals))
-        }
-      }
-    }
-    if (searchParams.value.maxAmount !== null && searchParams.value.maxAmount !== undefined) {
-      const maxAmountStr = String(searchParams.value.maxAmount)
-      if (maxAmountStr !== '') {
-        const maxAmountNum = Number(maxAmountStr)
-        if (!isNaN(maxAmountNum)) {
-          params.maxAmount = String(maxAmountNum * Math.pow(10, searchParams.value.decimals))
-        }
-      }
-    }
-
-    // 添加地址组（根据type决定提交哪些）
-    const buyAddressGroups = buyAddresses.value
-      .filter(pair => pair.from || pair.to)  // 过滤空组
-      .map(pair => ({
-        from: pair.from,
-        to: pair.to
-      }))
-    const sellAddressGroups = sellAddresses.value
-      .filter(pair => pair.from || pair.to)  // 过滤空组
-      .map(pair => ({
-        from: pair.from,
-        to: pair.to
-      }))
-
-    console.log('📦 [优化] 过滤后的地址组:', { buyAddressGroups, sellAddressGroups })
-
-    // 根据 type 决定提交哪些地址组
-    if (type === 'buy') {
-      // 查询全部买入时，只提交买入地址组
-      if (buyAddressGroups.length > 0) {
-        params.buyAddressGroups = buyAddressGroups
-      }
-    } else if (type === 'sell') {
-      // 查询全部卖出时，只提交卖出地址组
-      if (sellAddressGroups.length > 0) {
-        params.sellAddressGroups = sellAddressGroups
-      }
-    }
+    // 使用统一参数构建函数
+    const params = buildRequestParams(type)
 
     console.log(`📤 [调试] fetchRowData 提交地址组类型: ${type}`, {
       submitBuyGroups: !!params.buyAddressGroups,
@@ -898,9 +831,9 @@ const fetchBuyAddress = async (index: number) => {
   })
 
   try {
-    // Build aggregation request parameters
+    // Build aggregation request parameters with lowercase addresses
     const params: any = {
-      contractAddress: searchParams.value.contractAddress,
+      contractAddress: searchParams.value.contractAddress?.toLowerCase(),
       decimals: searchParams.value.decimals,
       limit: searchParams.value.limit,
     }
@@ -939,10 +872,10 @@ const fetchBuyAddress = async (index: number) => {
       }
     }
 
-    // 只添加当前买入地址组（如果from或to不为空）
+    // 只添加当前买入地址组（如果from或to不为空），并转换为小写
     const currentBuyGroup = {
-      from: buyAddresses.value[index].from,
-      to: buyAddresses.value[index].to
+      from: buyAddresses.value[index].from?.toLowerCase(),
+      to: buyAddresses.value[index].to?.toLowerCase()
     }
     if (currentBuyGroup.from || currentBuyGroup.to) {
       params.buyAddressGroups = [currentBuyGroup]
@@ -1035,9 +968,9 @@ const fetchSellAddress = async (index: number) => {
   })
 
   try {
-    // Build aggregation request parameters
+    // Build aggregation request parameters with lowercase addresses
     const params: any = {
-      contractAddress: searchParams.value.contractAddress,
+      contractAddress: searchParams.value.contractAddress?.toLowerCase(),
       decimals: searchParams.value.decimals,
       limit: searchParams.value.limit,
     }
@@ -1076,10 +1009,10 @@ const fetchSellAddress = async (index: number) => {
       }
     }
 
-    // 只添加当前卖出地址组（如果from或to不为空）
+    // 只添加当前卖出地址组（如果from或to不为空），并转换为小写
     const currentSellGroup = {
-      from: sellAddresses.value[index].from,
-      to: sellAddresses.value[index].to
+      from: sellAddresses.value[index].from?.toLowerCase(),
+      to: sellAddresses.value[index].to?.toLowerCase()
     }
     if (currentSellGroup.from || currentSellGroup.to) {
       params.sellAddressGroups = [currentSellGroup]
@@ -1148,62 +1081,8 @@ const fetchSellAddress = async (index: number) => {
 // 查询全部数据（所有买入和卖出地址组）
 const fetchAllData = async () => {
   try {
-    // 构建聚合请求参数
-    const params: any = {
-      contractAddress: searchParams.value.contractAddress,
-      decimals: searchParams.value.decimals,
-      limit: searchParams.value.limit,
-    }
-
-    // 添加区块范围
-    if (searchParams.value.startBlock !== null && searchParams.value.startBlock !== undefined) {
-      const startBlockStr = String(searchParams.value.startBlock)
-      if (startBlockStr !== '') {
-        params.startBlock = Number(startBlockStr)
-      }
-    }
-    if (searchParams.value.endBlock !== null && searchParams.value.endBlock !== undefined) {
-      const endBlockStr = String(searchParams.value.endBlock)
-      if (endBlockStr !== '') {
-        params.endBlock = Number(endBlockStr)
-      }
-    }
-
-    // 添加金额过滤
-    if (searchParams.value.minAmount !== null && searchParams.value.minAmount !== undefined) {
-      const minAmountStr = String(searchParams.value.minAmount)
-      if (minAmountStr !== '') {
-        const minAmountNum = Number(minAmountStr)
-        if (!isNaN(minAmountNum)) {
-          params.minAmount = String(minAmountNum * Math.pow(10, searchParams.value.decimals))
-        }
-      }
-    }
-    if (searchParams.value.maxAmount !== null && searchParams.value.maxAmount !== undefined) {
-      const maxAmountStr = String(searchParams.value.maxAmount)
-      if (maxAmountStr !== '') {
-        const maxAmountNum = Number(maxAmountStr)
-        if (!isNaN(maxAmountNum)) {
-          params.maxAmount = String(maxAmountNum * Math.pow(10, searchParams.value.decimals))
-        }
-      }
-    }
-
-    // 添加所有买入地址组（过滤掉from和to都为空的组）
-    params.buyAddressGroups = buyAddresses.value
-      .filter(pair => pair.from || pair.to)  // 过滤空组
-      .map(pair => ({
-        from: pair.from,
-        to: pair.to
-      }))
-
-    // 添加所有卖出地址组（过滤掉from和to都为空的组）
-    params.sellAddressGroups = sellAddresses.value
-      .filter(pair => pair.from || pair.to)  // 过滤空组
-      .map(pair => ({
-        from: pair.from,
-        to: pair.to
-      }))
+    // 使用统一参数构建函数
+    const params = buildRequestParams('all')
 
     console.log('📦 [优化] 过滤后的地址组:', {
       buyAddressGroups: params.buyAddressGroups,
@@ -1417,6 +1296,80 @@ const updateDisplayedData = () => {
   }
 
   transactions.value = allData
+}
+
+// Build unified request parameters with lowercase addresses
+const buildRequestParams = (type?: 'buy' | 'sell' | 'all') => {
+  const params: any = {
+    contractAddress: searchParams.value.contractAddress?.toLowerCase(),
+    decimals: searchParams.value.decimals,
+    limit: searchParams.value.limit,
+  }
+
+  // Add block range
+  if (searchParams.value.startBlock !== null && searchParams.value.startBlock !== undefined) {
+    const startBlockStr = String(searchParams.value.startBlock)
+    if (startBlockStr !== '') {
+      const startBlockNum = Number(startBlockStr)
+      if (!isNaN(startBlockNum)) params.startBlock = startBlockNum
+    }
+  }
+  if (searchParams.value.endBlock !== null && searchParams.value.endBlock !== undefined) {
+    const endBlockStr = String(searchParams.value.endBlock)
+    if (endBlockStr !== '') {
+      const endBlockNum = Number(endBlockStr)
+      if (!isNaN(endBlockNum)) params.endBlock = endBlockNum
+    }
+  }
+
+  // Add amount filter
+  if (searchParams.value.minAmount !== null && searchParams.value.minAmount !== undefined) {
+    const minAmountStr = String(searchParams.value.minAmount)
+    if (minAmountStr !== '') {
+      const minAmountNum = Number(minAmountStr)
+      if (!isNaN(minAmountNum)) {
+        params.minAmount = String(minAmountNum * Math.pow(10, searchParams.value.decimals))
+      }
+    }
+  }
+  if (searchParams.value.maxAmount !== null && searchParams.value.maxAmount !== undefined) {
+    const maxAmountStr = String(searchParams.value.maxAmount)
+    if (maxAmountStr !== '') {
+      const maxAmountNum = Number(maxAmountStr)
+      if (!isNaN(maxAmountNum)) {
+        params.maxAmount = String(maxAmountNum * Math.pow(10, searchParams.value.decimals))
+      }
+    }
+  }
+
+  // Filter empty address groups and convert to lowercase
+  const buyAddressGroups = buyAddresses.value
+    .filter(pair => pair.from || pair.to)
+    .map(pair => ({
+      from: pair.from?.toLowerCase(),
+      to: pair.to?.toLowerCase()
+    }))
+
+  const sellAddressGroups = sellAddresses.value
+    .filter(pair => pair.from || pair.to)
+    .map(pair => ({
+      from: pair.from?.toLowerCase(),
+      to: pair.to?.toLowerCase()
+    }))
+
+  // Add address groups based on type
+  if (type === 'buy' || type === 'all') {
+    if (buyAddressGroups.length > 0) {
+      params.buyAddressGroups = buyAddressGroups
+    }
+  }
+  if (type === 'sell' || type === 'all') {
+    if (sellAddressGroups.length > 0) {
+      params.sellAddressGroups = sellAddressGroups
+    }
+  }
+
+  return params
 }
 
 // 更新总量（统一流程：清空并重新计算所有总量）
