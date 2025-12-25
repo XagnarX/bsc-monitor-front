@@ -496,7 +496,29 @@ export const checkBlacklistStatus = async (
   })
 }
 
-// Token Filter Analysis Aggregate API
+// Helper function to convert camelCase to snake_case
+const toSnakeCase = (str: string): string => {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+}
+
+// Helper function to convert object keys from camelCase to snake_case
+const convertToSnakeCase = (obj: Record<string, any>): Record<string, any> => {
+  const result: Record<string, any> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    const snakeKey = toSnakeCase(key)
+    // Handle array serialization for address groups
+    if (Array.isArray(value)) {
+      result[snakeKey] = encodeURIComponent(JSON.stringify(value))
+    } else if (typeof value === 'object' && value !== null) {
+      result[snakeKey] = encodeURIComponent(JSON.stringify(value))
+    } else {
+      result[snakeKey] = value
+    }
+  }
+  return result
+}
+
+// Token Filter Analysis Aggregate API (GET request)
 export const getTokenFilterAnalysisAggregate = async (
   params: {
     contractAddress: string;
@@ -511,12 +533,11 @@ export const getTokenFilterAnalysisAggregate = async (
   },
   options?: { [key: string]: any }
 ) => {
+  // Convert camelCase to snake_case and serialize arrays
+  const snakeParams = convertToSnakeCase(params)
   return request('/api/token-filter-analysis/aggregate', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    data: params,
+    method: 'GET',
+    params: snakeParams,
     ...(options || {}),
   })
 }
