@@ -36,6 +36,7 @@
       </a-form-item>
     </a-form>
     <a-space style="margin: 12px 0;">
+      <a-button type="primary" size="small" @click="batchCopyFromAddresses">去重并批量复制From地址</a-button>
       <a-button type="primary" size="small" @click="batchCopyToAddresses">去重并批量复制To地址</a-button>
       <a-button type="primary" size="small" @click="fillToAddressesToFrom">将To地址填入From筛选</a-button>
       <a-popconfirm content="确认批量将选中的To地址添加到黑名单？" @ok="batchAddToBlacklist">
@@ -445,6 +446,31 @@ const batchCopyToAddresses = () => {
 
   const addresses = uniqueAddresses.join('\n')
   copyToClipboard(addresses, `已复制 ${uniqueAddresses.length} 个去重后的To地址`, '复制失败')
+}
+
+// Deduplicate and batch copy From addresses
+const batchCopyFromAddresses = () => {
+  if (!selectedRowKeys.value.length) {
+    Message.warning('请先选择要复制的记录')
+    return
+  }
+  // Convert selectedRowKeys to strings for comparison
+  const selectedIds = selectedRowKeys.value.map(key => String(key))
+  const fromAddresses = events.value
+    .filter(item => selectedIds.includes(String(item.id)))
+    .map(item => item.from_address)
+    .filter(Boolean)
+
+  // Deduplicate addresses using Set
+  const uniqueAddresses = [...new Set(fromAddresses)]
+
+  if (!uniqueAddresses.length) {
+    Message.warning('没有可复制的From地址')
+    return
+  }
+
+  const addresses = uniqueAddresses.join('\n')
+  copyToClipboard(addresses, `已复制 ${uniqueAddresses.length} 个去重后的From地址`, '复制失败')
 }
 
 // 将To地址填入From筛选
