@@ -36,7 +36,7 @@
       </a-form-item>
     </a-form>
     <a-space style="margin: 12px 0;">
-      <a-button type="primary" size="small" @click="batchCopyFromAddresses">去重并批量复制From地址</a-button>
+      <a-button type="primary" size="small" @click="batchCopyFromAddresses">批量复制From地址</a-button>
       <a-button type="primary" size="small" @click="batchCopyToAddresses">去重并批量复制To地址</a-button>
       <a-button type="primary" size="small" @click="fillToAddressesToFrom">将To地址填入From筛选</a-button>
       <a-popconfirm content="确认批量将选中的To地址添加到黑名单？" @ok="batchAddToBlacklist">
@@ -423,7 +423,7 @@ const rowSelection = {
   checkStrictly: false,
 }
 
-// 去重并批量复制To地址
+// Deduplicate and batch copy To addresses
 const batchCopyToAddresses = () => {
   if (!selectedRowKeys.value.length) {
     Message.warning('请先选择要复制的记录')
@@ -436,16 +436,15 @@ const batchCopyToAddresses = () => {
     .map(item => item.to_address)
     .filter(Boolean)
 
-  // Deduplicate addresses using Set
-  const uniqueAddresses = [...new Set(toAddresses)]
-
-  if (!uniqueAddresses.length) {
+  if (!toAddresses.length) {
     Message.warning('没有可复制的To地址')
     return
   }
 
+  // Deduplicate addresses using Set
+  const uniqueAddresses = [...new Set(toAddresses)]
   const addresses = uniqueAddresses.join('\n')
-  copyToClipboard(addresses, `已复制 ${uniqueAddresses.length} 个去重后的To地址`, '复制失败')
+  copyToClipboard(addresses, `已复制 ${uniqueAddresses.length} 个To地址（去重后）`, '复制失败')
 }
 
 // Deduplicate and batch copy From addresses
@@ -461,16 +460,13 @@ const batchCopyFromAddresses = () => {
     .map(item => item.from_address)
     .filter(Boolean)
 
-  // Deduplicate addresses using Set
-  const uniqueAddresses = [...new Set(fromAddresses)]
-
-  if (!uniqueAddresses.length) {
+  if (!fromAddresses.length) {
     Message.warning('没有可复制的From地址')
     return
   }
 
-  const addresses = uniqueAddresses.join('\n')
-  copyToClipboard(addresses, `已复制 ${uniqueAddresses.length} 个去重后的From地址`, '复制失败')
+  const addresses = fromAddresses.join('\n')
+  copyToClipboard(addresses, `已复制 ${fromAddresses.length} 个From地址`, '复制失败')
 }
 
 // 将To地址填入From筛选
