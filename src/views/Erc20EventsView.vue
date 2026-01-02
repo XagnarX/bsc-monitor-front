@@ -36,8 +36,26 @@
       </a-form-item>
     </a-form>
     <a-space style="margin: 12px 0;">
-      <a-button type="primary" size="small" @click="batchCopyFromAddresses">批量复制From地址</a-button>
-      <a-button type="primary" size="small" @click="batchCopyToAddresses">去重并批量复制To地址</a-button>
+      <a-dropdown>
+        <a-button type="primary" size="small">
+          From 地址 <icon-down />
+        </a-button>
+        <template #content>
+          <a-doption @click="batchCopyFromAddresses(false)">批量复制From地址</a-doption>
+          <a-doption @click="batchCopyFromAddresses(true)">去重并批量复制From地址</a-doption>
+        </template>
+      </a-dropdown>
+      <a-dropdown>
+        <a-button type="primary" size="small">
+          To 地址 <icon-down />
+        </a-button>
+        <template #content>
+          <a-doption @click="batchCopyToAddresses(false)">批量复制To地址</a-doption>
+          <a-doption @click="batchCopyToAddresses(true)">去重并批量复制To地址</a-doption>
+        </template>
+      </a-dropdown>
+      <a-button type="primary" size="small" @click="deduplicateByToAddress">To地址去重列表</a-button>
+      <a-button v-if="isDeduplicated" type="primary" size="small" @click="restoreAllData">恢复全部数据</a-button>
       <a-button type="primary" size="small" @click="fillToAddressesToFrom">将To地址填入From筛选</a-button>
       <a-popconfirm content="确认批量将选中的To地址添加到黑名单？" @ok="batchAddToBlacklist">
         <a-button type="primary" size="small" status="danger">批量添加到黑名单</a-button>
@@ -193,7 +211,7 @@
 import { ref, onUnmounted, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
-import { IconCopy, IconDelete, IconTag, IconInfoCircle } from '@arco-design/web-vue/es/icon'
+import { IconCopy, IconDelete, IconTag, IconInfoCircle, IconDown } from '@arco-design/web-vue/es/icon'
 import { getErc20Events, addReceiverBlacklist, getAddressTags, addAddressTag, deleteAddressTag, getUniqueAddressTags, batchAddAddressTags } from '@/api/monitor.ts'
 import { copyToClipboard } from '@/utils/clipboard'
 import dayjs from 'dayjs'
@@ -293,6 +311,8 @@ onMounted(() => {
 })
 
 const events = ref<any[]>([])
+const originalEvents = ref<any[]>([]) // Store original data for restore
+const isDeduplicated = ref(false) // Track if data is currently deduplicated by to_address
 
 const columns = [
   { title: '区块号', dataIndex: 'block_number' },
@@ -400,6 +420,10 @@ const fetchData = async () => {
     })
 
     events.value = eventsList
+    // Save original data for restore functionality
+    originalEvents.value = [...eventsList]
+    // Reset deduplication state when new data is fetched
+    isDeduplicated.value = false
     // 清空选中状态，避免与新数据不匹配
     selectedRowKeys.value = []
     console.log('设置的事件列表:', eventsList) // 调试日志
@@ -423,15 +447,15 @@ const rowSelection = {
   checkStrictly: false,
 }
 
-// Deduplicate and batch copy To addresses
-const batchCopyToAddresses = () => {
+// Batch copy To addresses with optional deduplication
+const batchCopyToAddresses = (deduplicate: boolean = false) => {
   if (!selectedRowKeys.value.length) {
     Message.warning('请先选择要复制的记录')
     return
   }
   // Convert selectedRowKeys to strings for comparison
   const selectedIds = selectedRowKeys.value.map(key => String(key))
-  const toAddresses = events.value
+  let toAddresses = events.value
     .filter(item => selectedIds.includes(String(item.id)))
     .map(item => item.to_address)
     .filter(Boolean)
@@ -441,21 +465,24 @@ const batchCopyToAddresses = () => {
     return
   }
 
-  // Deduplicate addresses using Set
-  const uniqueAddresses = [...new Set(toAddresses)]
-  const addresses = uniqueAddresses.join('\n')
-  copyToClipboard(addresses, `已复制 ${uniqueAddresses.length} 个To地址（去重后）`, '复制失败')
+  // Deduplicate if requested
+  if (deduplicate) {
+    toAddresses = [...new Set(toAddresses)]
+  }
+
+  const addresses = toAddresses.join('\n')
+  copyToClipboard(addresses, `已复制 ${toAddresses.length} 个To地址${deduplicate ? '（去重后）' : ''}`, '复制失败')
 }
 
-// Deduplicate and batch copy From addresses
-const batchCopyFromAddresses = () => {
+// Batch copy From addresses with optional deduplication
+const batchCopyFromAddresses = (deduplicate: boolean = false) => {
   if (!selectedRowKeys.value.length) {
     Message.warning('请先选择要复制的记录')
     return
   }
   // Convert selectedRowKeys to strings for comparison
   const selectedIds = selectedRowKeys.value.map(key => String(key))
-  const fromAddresses = events.value
+  let fromAddresses = events.value
     .filter(item => selectedIds.includes(String(item.id)))
     .map(item => item.from_address)
     .filter(Boolean)
@@ -465,8 +492,56 @@ const batchCopyFromAddresses = () => {
     return
   }
 
+  // Deduplicate if requested
+  if (deduplicate) {
+    fromAddresses = [...new Set(fromAddresses)]
+  }
+
   const addresses = fromAddresses.join('\n')
-  copyToClipboard(addresses, `已复制 ${fromAddresses.length} 个From地址`, '复制失败')
+  copyToClipboard(addresses, `已复制 ${fromAddresses.length} 个From地址${deduplicate ? '（去重后）' : ''}`, '复制失败')
+}
+
+// Deduplicate events by to_address, keeping the last record for each address
+const deduplicateByToAddress = () => {
+  if (!events.value.length) {
+    Message.warning('没有可处理的数据')
+    return
+  }
+
+  // Group by to_address and keep the last record (highest block_number/timestamp)
+  const toAddressMap = new Map<string, any>()
+
+  for (const item of events.value) {
+    const toAddress = item.to_address
+    if (!toAddress) continue
+
+    // Keep the last record for each to_address
+    // Compare by block_number (higher = later)
+    const existing = toAddressMap.get(toAddress)
+    if (!existing || (item.block_number && item.block_number > existing.block_number)) {
+      toAddressMap.set(toAddress, item)
+    }
+  }
+
+  const deduplicatedEvents = Array.from(toAddressMap.values())
+  events.value = deduplicatedEvents
+  isDeduplicated.value = true
+  // Clear selection when data changes
+  selectedRowKeys.value = []
+  Message.success(`已根据To地址去重，从 ${originalEvents.value.length} 条减少到 ${deduplicatedEvents.length} 条`)
+}
+
+// Restore all data from original events
+const restoreAllData = () => {
+  if (!originalEvents.value.length) {
+    Message.warning('没有可恢复的数据')
+    return
+  }
+
+  events.value = [...originalEvents.value]
+  isDeduplicated.value = false
+  selectedRowKeys.value = []
+  Message.success(`已恢复全部 ${originalEvents.value.length} 条数据`)
 }
 
 // 将To地址填入From筛选
