@@ -54,13 +54,14 @@
           <a-doption @click="batchCopyToAddresses(true)">去重并批量复制To地址</a-doption>
         </template>
       </a-dropdown>
-      <a-button type="primary" size="small" @click="deduplicateByToAddress">To地址去重列表</a-button>
-      <a-button v-if="isDeduplicated" type="primary" size="small" @click="restoreAllData">恢复全部数据</a-button>
+      <a-button :type="isDeduplicated ? 'primary' : 'outline'" size="small" @click="deduplicateByToAddress">To地址去重列表</a-button>
+      <a-button :type="isDeduplicatedByFrom ? 'primary' : 'outline'" size="small" @click="deduplicateByFromAddress">From地址去重列表</a-button>
       <a-button type="primary" size="small" @click="fillToAddressesToFrom">将To地址填入From筛选</a-button>
       <a-popconfirm content="确认批量将选中的To地址添加到黑名单？" @ok="batchAddToBlacklist">
         <a-button type="primary" size="small" status="danger">批量添加到黑名单</a-button>
       </a-popconfirm>
       <a-button type="primary" size="small" @click="showBatchTagModal">批量添加地址标签</a-button>
+      <a-button type="primary" size="small" @click="showBatchContractTagModal">批量添加合约标签</a-button>
     </a-space>
     <a-table
       :columns="columns"
@@ -81,14 +82,10 @@
       </template>
       <template #from_address="{ record }">
         <a-space>
-          <template v-if="record.from_address_tag">
-            <a-tag color="blue" size="small">
-              {{ record.from_address_tag }}
-            </a-tag>
-          </template>
-          <template v-else>
-            <a-link :href="`https://bscscan.com/address/${record.from_address}`" target="_blank">{{ shortHash(record.from_address) }}</a-link>
-          </template>
+          <a-tag v-if="record.from_address_tag" color="blue" size="small">
+            {{ record.from_address_tag }}
+          </a-tag>
+          <a-link :href="`https://bscscan.com/address/${record.from_address}`" target="_blank">{{ shortHash(record.from_address, !!record.from_address_tag) }}</a-link>
           <a-button type="text" size="mini" @click="copyToClipboard(record.from_address)">
             <icon-copy />
           </a-button>
@@ -99,14 +96,10 @@
       </template>
       <template #to_address="{ record }">
         <a-space>
-          <template v-if="record.to_address_tag">
-            <a-tag color="blue" size="small">
-              {{ record.to_address_tag }}
-            </a-tag>
-          </template>
-          <template v-else>
-            <a-link :href="`https://bscscan.com/address/${record.to_address}`" target="_blank">{{ shortHash(record.to_address) }}</a-link>
-          </template>
+          <a-tag v-if="record.to_address_tag" color="blue" size="small">
+            {{ record.to_address_tag }}
+          </a-tag>
+          <a-link :href="`https://bscscan.com/address/${record.to_address}`" target="_blank">{{ shortHash(record.to_address, !!record.to_address_tag) }}</a-link>
           <a-button type="text" size="mini" @click="copyToClipboard(record.to_address)">
             <icon-copy />
           </a-button>
@@ -119,9 +112,15 @@
       </template>
       <template #contract_address="{ record }">
         <a-space>
-          <a-link :href="`https://bscscan.com/token/${record.contract_address}`" target="_blank">{{ shortHash(record.contract_address) }}</a-link>
+          <a-tag v-if="record.contract_address_tag" color="green" size="small">
+            {{ record.contract_address_tag }}
+          </a-tag>
+          <a-link :href="`https://bscscan.com/token/${record.contract_address}`" target="_blank">{{ shortHash(record.contract_address, !!record.contract_address_tag) }}</a-link>
           <a-button type="text" size="mini" @click="copyToClipboard(record.contract_address)">
             <icon-copy />
+          </a-button>
+          <a-button type="text" size="mini" @click="showTagModal(record.contract_address)">
+            <icon-tag />
           </a-button>
         </a-space>
       </template>
@@ -313,6 +312,7 @@ onMounted(() => {
 const events = ref<any[]>([])
 const originalEvents = ref<any[]>([]) // Store original data for restore
 const isDeduplicated = ref(false) // Track if data is currently deduplicated by to_address
+const isDeduplicatedByFrom = ref(false) // Track if data is currently deduplicated by from_address
 
 const columns = [
   { title: '区块号', dataIndex: 'block_number' },
@@ -324,8 +324,11 @@ const columns = [
   { title: '时间', dataIndex: 'timestamp', slotName: 'timestamp' },
 ]
 
-const shortHash = (val: string) => {
+const shortHash = (val: string, shortMode: boolean = false) => {
   if (!val) return ''
+  if (shortMode) {
+    return val.slice(0, 6) + '...'
+  }
   return val.length > 12 ? val.slice(0, 6) + '...' + val.slice(-6) : val
 }
 
@@ -501,8 +504,24 @@ const batchCopyFromAddresses = (deduplicate: boolean = false) => {
   copyToClipboard(addresses, `已复制 ${fromAddresses.length} 个From地址${deduplicate ? '（去重后）' : ''}`, '复制失败')
 }
 
-// Deduplicate events by to_address, keeping the last record for each address
+// Toggle deduplication by to_address
 const deduplicateByToAddress = () => {
+  // If already deduplicated by To, restore original data
+  if (isDeduplicated.value) {
+    events.value = [...originalEvents.value]
+    isDeduplicated.value = false
+    isDeduplicatedByFrom.value = false
+    selectedRowKeys.value = []
+    Message.success(`已恢复全部 ${originalEvents.value.length} 条数据`)
+    return
+  }
+
+  // If From deduplication is active, reset to original data first
+  if (isDeduplicatedByFrom.value) {
+    events.value = [...originalEvents.value]
+    isDeduplicatedByFrom.value = false
+  }
+
   if (!events.value.length) {
     Message.warning('没有可处理的数据')
     return
@@ -531,17 +550,50 @@ const deduplicateByToAddress = () => {
   Message.success(`已根据To地址去重，从 ${originalEvents.value.length} 条减少到 ${deduplicatedEvents.length} 条`)
 }
 
-// Restore all data from original events
-const restoreAllData = () => {
-  if (!originalEvents.value.length) {
-    Message.warning('没有可恢复的数据')
+// Toggle deduplication by from_address
+const deduplicateByFromAddress = () => {
+  // If already deduplicated by From, restore original data
+  if (isDeduplicatedByFrom.value) {
+    events.value = [...originalEvents.value]
+    isDeduplicated.value = false
+    isDeduplicatedByFrom.value = false
+    selectedRowKeys.value = []
+    Message.success(`已恢复全部 ${originalEvents.value.length} 条数据`)
     return
   }
 
-  events.value = [...originalEvents.value]
-  isDeduplicated.value = false
+  // If To deduplication is active, reset to original data first
+  if (isDeduplicated.value) {
+    events.value = [...originalEvents.value]
+    isDeduplicated.value = false
+  }
+
+  if (!events.value.length) {
+    Message.warning('没有可处理的数据')
+    return
+  }
+
+  // Group by from_address and keep the last record (highest block_number/timestamp)
+  const fromAddressMap = new Map<string, any>()
+
+  for (const item of events.value) {
+    const fromAddress = item.from_address
+    if (!fromAddress) continue
+
+    // Keep the last record for each from_address
+    // Compare by block_number (higher = later)
+    const existing = fromAddressMap.get(fromAddress)
+    if (!existing || (item.block_number && item.block_number > existing.block_number)) {
+      fromAddressMap.set(fromAddress, item)
+    }
+  }
+
+  const deduplicatedEvents = Array.from(fromAddressMap.values())
+  events.value = deduplicatedEvents
+  isDeduplicatedByFrom.value = true
+  // Clear selection when data changes
   selectedRowKeys.value = []
-  Message.success(`已恢复全部 ${originalEvents.value.length} 条数据`)
+  Message.success(`已根据From地址去重，从 ${originalEvents.value.length} 条减少到 ${deduplicatedEvents.length} 条`)
 }
 
 // 将To地址填入From筛选
@@ -642,6 +694,7 @@ const tagForm = ref({
 // 批量地址标签管理相关
 const batchTagModalVisible = ref(false)
 const selectedFromAddresses = ref<string[]>([])
+const selectedContractAddresses = ref<string[]>([])
 const batchTagForm = ref({
   tag: '',
   description: ''
@@ -761,20 +814,21 @@ const showBatchTagModal = () => {
     Message.warning('请先选择事件记录')
     return
   }
-  
+
   // Get selected event From addresses (deduplicated)
   const selectedIds = selectedRowKeys.value.map(key => String(key))
   const addresses = [...new Set(events.value
     .filter(item => selectedIds.includes(String(item.id)))
     .map(item => item.from_address)
     .filter(Boolean))]
-  
+
   if (!addresses.length) {
     Message.warning('没有可添加标签的From地址')
     return
   }
-  
+
   selectedFromAddresses.value = addresses
+  selectedContractAddresses.value = [] // Clear contract addresses
   batchTagModalVisible.value = true
   loadUniqueTags()
 }
@@ -785,18 +839,24 @@ const handleBatchTagModalOk = async () => {
     Message.warning('请输入标签名')
     return
   }
-  
+
+  // Use contract addresses if available, otherwise use from addresses
+  const addresses = selectedContractAddresses.value.length > 0
+    ? selectedContractAddresses.value
+    : selectedFromAddresses.value
+
   try {
     await batchAddAddressTags({
-      addresses: selectedFromAddresses.value,
+      addresses: addresses,
       tag: batchTagForm.value.tag.trim(),
       description: batchTagForm.value.description.trim()
     })
-    Message.success(`成功为 ${selectedFromAddresses.value.length} 个地址添加标签`)
+    Message.success(`成功为 ${addresses.length} 个地址添加标签`)
     batchTagModalVisible.value = false
     batchTagForm.value.tag = ''
     batchTagForm.value.description = ''
     selectedRowKeys.value = [] // 清空选择
+    selectedContractAddresses.value = [] // 清空合约地址
   } catch (e) {
     Message.error('批量添加标签失败')
   }
@@ -807,6 +867,31 @@ const handleBatchTagModalCancel = () => {
   batchTagModalVisible.value = false
   batchTagForm.value.tag = ''
   batchTagForm.value.description = ''
+}
+
+// 显示批量合约标签管理模态框
+const showBatchContractTagModal = () => {
+  if (!selectedRowKeys.value.length) {
+    Message.warning('请先选择事件记录')
+    return
+  }
+
+  // Get selected event contract addresses (deduplicated)
+  const selectedIds = selectedRowKeys.value.map(key => String(key))
+  const contracts = [...new Set(events.value
+    .filter(item => selectedIds.includes(String(item.id)))
+    .map(item => item.contract_address)
+    .filter(Boolean))]
+
+  if (!contracts.length) {
+    Message.warning('没有可添加标签的合约地址')
+    return
+  }
+
+  selectedFromAddresses.value = [] // Clear from addresses
+  selectedContractAddresses.value = contracts
+  batchTagModalVisible.value = true
+  loadUniqueTags()
 }
 
 // 清理定时器
